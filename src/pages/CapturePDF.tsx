@@ -10,11 +10,19 @@ import { useToast } from '@/hooks/use-toast';
 import { jsPDF } from 'jspdf';
 import { mockStorage } from '@/lib/mockStorage';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Switch } from '@/components/ui/switch';
+import { PDFTag } from '@/types/pdf';
+import TagSelector from '@/components/TagSelector';
+import ImageEnhancer from '@/components/ImageEnhancer';
+import { generateThumbnail } from '@/lib/imageProcessing';
 
 const CapturePDF = () => {
   const [images, setImages] = useState<string[]>([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState<number | null>(null);
   const [pdfName, setPdfName] = useState('');
   const [visibility, setVisibility] = useState<'private' | 'public'>('private');
+  const [tags, setTags] = useState<PDFTag[]>([]);
+  const [addPageNumbers, setAddPageNumbers] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const userId = useAnonymousUser();
@@ -42,6 +50,22 @@ const CapturePDF = () => {
 
   const removeImage = (index: number) => {
     setImages((prev) => prev.filter((_, i) => i !== index));
+    setCurrentImageIndex(null);
+  };
+
+  const handleImageEnhanced = (enhancedImage: string) => {
+    if (currentImageIndex !== null) {
+      setImages(prev => {
+        const newImages = [...prev];
+        newImages[currentImageIndex] = enhancedImage;
+        return newImages;
+      });
+      setCurrentImageIndex(null);
+      toast({
+        title: "Enhancement applied!",
+        description: "Image has been enhanced successfully",
+      });
+    }
   };
 
   const createPDF = async () => {
@@ -76,6 +100,7 @@ const CapturePDF = () => {
 
     try {
       const pdf = new jsPDF();
+      const totalPages = images.length;
       
       for (let i = 0; i < images.length; i++) {
         const img = images[i];
@@ -89,10 +114,26 @@ const CapturePDF = () => {
         const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
         
         pdf.addImage(img, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+
+        // Add page numbers if enabled
+        if (addPageNumbers) {
+          const pageNum = i + 1;
+          pdf.setFontSize(10);
+          pdf.setTextColor(128, 128, 128);
+          pdf.text(
+            `Page ${pageNum} of ${totalPages}`,
+            pdfWidth / 2,
+            pdf.internal.pageSize.getHeight() - 10,
+            { align: 'center' }
+          );
+        }
       }
 
       const pdfBlob = pdf.output('blob');
       const pdfDataUrl = pdf.output('dataurlstring');
+
+      // Generate thumbnail from first image
+      const thumbnailUrl = await generateThumbnail(images[0]);
 
       await mockStorage.savePDF({
         name: pdfName.trim(),
@@ -100,7 +141,10 @@ const CapturePDF = () => {
         timestamp: Date.now(),
         visibility,
         downloadUrl: pdfDataUrl,
-        size: pdfBlob.size
+        thumbnailUrl,
+        size: pdfBlob.size,
+        tags,
+        pageCount: totalPages,
       });
 
       toast({
@@ -150,29 +194,42 @@ const CapturePDF = () => {
           </div>
 
           {images.length > 0 && (
-            <div>
-              <h2 className="text-lg font-semibold mb-3">
-                Captured Images ({images.length})
-              </h2>
-              <div className="grid grid-cols-2 gap-3">
-                {images.map((img, index) => (
-                  <Card key={index} className="relative overflow-hidden">
-                    <img
-                      src={img}
-                      alt={`Capture ${index + 1}`}
-                      className="w-full h-40 object-cover"
-                    />
-                    <Button
-                      size="icon"
-                      variant="destructive"
-                      className="absolute top-2 right-2"
-                      onClick={() => removeImage(index)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </Card>
-                ))}
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-lg font-semibold mb-3">
+                  Captured Images ({images.length})
+                </h2>
+                <div className="grid grid-cols-2 gap-3">
+                  {images.map((img, index) => (
+                    <Card key={index} className="relative overflow-hidden">
+                      <img
+                        src={img}
+                        alt={`Capture ${index + 1}`}
+                        className="w-full h-40 object-cover cursor-pointer"
+                        onClick={() => setCurrentImageIndex(index)}
+                      />
+                      <Button
+                        size="icon"
+                        variant="destructive"
+                        className="absolute top-2 right-2"
+                        onClick={() => removeImage(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                      {currentImageIndex === index && (
+                        <div className="absolute inset-0 border-2 border-primary bg-primary/10 pointer-events-none" />
+                      )}
+                    </Card>
+                  ))}
+                </div>
               </div>
+
+              {currentImageIndex !== null && (
+                <ImageEnhancer
+                  image={images[currentImageIndex]}
+                  onEnhanced={handleImageEnhanced}
+                />
+              )}
             </div>
           )}
 
@@ -209,6 +266,21 @@ const CapturePDF = () => {
                     </Label>
                   </div>
                 </RadioGroup>
+              </div>
+
+              {visibility === 'public' && (
+                <TagSelector selectedTags={tags} onChange={setTags} />
+              )}
+
+              <div className="flex items-center justify-between">
+                <Label htmlFor="pageNumbers" className="flex-1 cursor-pointer">
+                  Add Page Numbers
+                </Label>
+                <Switch
+                  id="pageNumbers"
+                  checked={addPageNumbers}
+                  onCheckedChange={setAddPageNumbers}
+                />
               </div>
 
               <Button

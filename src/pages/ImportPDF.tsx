@@ -9,11 +9,14 @@ import { useAnonymousUser } from '@/hooks/useAnonymousUser';
 import { useToast } from '@/hooks/use-toast';
 import { mockStorage } from '@/lib/mockStorage';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { PDFTag } from '@/types/pdf';
+import TagSelector from '@/components/TagSelector';
 
 const ImportPDF = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [pdfName, setPdfName] = useState('');
   const [visibility, setVisibility] = useState<'private' | 'public'>('private');
+  const [tags, setTags] = useState<PDFTag[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const userId = useAnonymousUser();
@@ -84,7 +87,10 @@ const ImportPDF = () => {
           timestamp: Date.now(),
           visibility,
           downloadUrl: dataUrl,
-          size: selectedFile!.size
+          size: selectedFile!.size,
+          tags,
+          thumbnailUrl: undefined, // Could generate from PDF first page
+          pageCount: undefined,
         });
 
         toast({
@@ -205,6 +211,10 @@ const ImportPDF = () => {
                   </div>
                 </RadioGroup>
               </div>
+
+              {visibility === 'public' && (
+                <TagSelector selectedTags={tags} onChange={setTags} />
+              )}
 
               <Button
                 onClick={uploadPDF}
