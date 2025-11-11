@@ -4,33 +4,33 @@ import { mockStorage } from '@/lib/mockStorage';
 import { PDFDocument, PDFTag } from '@/types/pdf';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, FileText, Clock, Tag } from 'lucide-react';
+import { Download, FileText, Clock, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import SearchBar from '@/components/SearchBar';
 import { Badge } from '@/components/ui/badge';
 
 const Home = () => {
-  const [publicPDFs, setPublicPDFs] = useState<PDFDocument[]>([]);
+  const [worldPDFs, setWorldPDFs] = useState<PDFDocument[]>([]);
   const [filteredPDFs, setFilteredPDFs] = useState<PDFDocument[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const { toast } = useToast();
   const location = useLocation();
 
   useEffect(() => {
-    loadPublicPDFs();
+    loadWorldPDFs();
   }, [location.pathname]);
 
-  const loadPublicPDFs = async () => {
+  const loadWorldPDFs = async () => {
     try {
-      const pdfs = mockStorage.getPublicPDFs();
-      const sorted = pdfs.sort((a, b) => b.timestamp - a.timestamp);
-      setPublicPDFs(sorted);
-      setFilteredPDFs(sorted);
+      const pdfs = await mockStorage.getWorldPDFs();
+      setWorldPDFs(pdfs);
+      setFilteredPDFs(pdfs);
     } catch (error) {
-      console.error('Error loading public PDFs:', error);
+      console.error('Error loading world PDFs:', error);
       toast({
         title: "Error",
-        description: "Failed to load public PDFs",
+        description: "Failed to load world PDFs",
         variant: "destructive"
       });
     } finally {
@@ -38,9 +38,28 @@ const Home = () => {
     }
   };
 
-  const handleSearch = (query: string, tags: PDFTag[]) => {
-    const results = mockStorage.searchPublicPDFs(query, tags);
-    setFilteredPDFs(results.sort((a, b) => b.timestamp - a.timestamp));
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadWorldPDFs();
+    setRefreshing(false);
+    toast({
+      title: "Refreshed",
+      description: "World feed updated",
+    });
+  };
+
+  const handleSearch = async (query: string, tags: PDFTag[]) => {
+    try {
+      const results = await mockStorage.searchWorldPDFs(query, tags);
+      setFilteredPDFs(results);
+    } catch (error) {
+      console.error('Error searching world PDFs:', error);
+      toast({
+        title: "Error",
+        description: "Failed to search world PDFs",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleDownload = (pdf: PDFDocument) => {
@@ -58,7 +77,17 @@ const Home = () => {
   return (
     <div className="min-h-screen bg-background pb-20">
       <div className="p-6">
-        <h1 className="text-2xl font-bold text-foreground mb-4">Public PDFs</h1>
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-bold text-foreground">World PDFs</h1>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
         
         <div className="mb-6">
           <SearchBar onSearch={handleSearch} />
@@ -76,10 +105,10 @@ const Home = () => {
           <div className="text-center py-12">
             <FileText className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground">
-              {publicPDFs.length === 0 ? 'No public PDFs yet' : 'No PDFs match your search'}
+              {worldPDFs.length === 0 ? 'No world PDFs yet' : 'No PDFs match your search'}
             </p>
             <p className="text-sm text-muted-foreground mt-2">
-              {publicPDFs.length === 0 ? 'Be the first to share a PDF!' : 'Try different search terms or tags'}
+              {worldPDFs.length === 0 ? 'Be the first to share a PDF!' : 'Try different search terms or tags'}
             </p>
           </div>
         ) : (

@@ -113,7 +113,7 @@ const Library = () => {
                             <span>• {pdf.pageCount} pages</span>
                           )}
                           <span className={`px-2 py-0.5 rounded-full text-xs ${
-                            pdf.visibility === 'public' 
+                            pdf.visibility === 'world' 
                               ? 'bg-accent/10 text-accent' 
                               : 'bg-secondary text-secondary-foreground'
                           }`}>

@@ -15,7 +15,7 @@ import TagSelector from '@/components/TagSelector';
 const ImportPDF = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [pdfName, setPdfName] = useState('');
-  const [visibility, setVisibility] = useState<'private' | 'public'>('private');
+  const [visibility, setVisibility] = useState<'private' | 'world'>('private');
   const [tags, setTags] = useState<PDFTag[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -194,7 +194,7 @@ const ImportPDF = () => {
                 <Label>Visibility</Label>
                 <RadioGroup
                   value={visibility}
-                  onValueChange={(value) => setVisibility(value as 'private' | 'public')}
+                  onValueChange={(value) => setVisibility(value as 'private' | 'world')}
                   className="mt-1.5"
                 >
                   <div className="flex items-center space-x-2">
@@ -204,15 +204,15 @@ const ImportPDF = () => {
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="public" id="public" />
-                    <Label htmlFor="public" className="font-normal cursor-pointer">
-                      Public (Visible to everyone)
+                    <RadioGroupItem value="world" id="world" />
+                    <Label htmlFor="world" className="font-normal cursor-pointer">
+                      World (Visible to everyone)
                     </Label>
                   </div>
                 </RadioGroup>
               </div>
 
-              {visibility === 'public' && (
+              {visibility === 'world' && (
                 <TagSelector selectedTags={tags} onChange={setTags} />
               )}
 

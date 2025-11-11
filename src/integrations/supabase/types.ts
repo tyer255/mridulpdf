@@ -14,7 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      world_pdfs: {
+        Row: {
+          created_at: string
+          download_url: string
+          id: string
+          name: string
+          page_count: number | null
+          size: number | null
+          tags: string[]
+          thumbnail_url: string | null
+          timestamp: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          download_url: string
+          id?: string
+          name: string
+          page_count?: number | null
+          size?: number | null
+          tags?: string[]
+          thumbnail_url?: string | null
+          timestamp: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          download_url?: string
+          id?: string
+          name?: string
+          page_count?: number | null
+          size?: number | null
+          tags?: string[]
+          thumbnail_url?: string | null
+          timestamp?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

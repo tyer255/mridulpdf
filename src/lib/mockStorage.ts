@@ -1,18 +1,52 @@
-// Temporary mock storage - replace with Firebase later
 import { PDFDocument, PDFTag } from '@/types/pdf';
+import { supabase } from '@/integrations/supabase/client';
 
 const PDFS_KEY = 'scan_share_pdfs';
 
 export const mockStorage = {
   async savePDF(pdf: Omit<PDFDocument, 'id'>): Promise<PDFDocument> {
-    const pdfs = this.getPDFs();
-    const newPDF: PDFDocument = {
-      ...pdf,
-      id: Date.now().toString(),
-    };
-    pdfs.push(newPDF);
-    localStorage.setItem(PDFS_KEY, JSON.stringify(pdfs));
-    return newPDF;
+    if (pdf.visibility === 'world') {
+      // Save to global database
+      const { data, error } = await supabase
+        .from('world_pdfs')
+        .insert({
+          name: pdf.name,
+          user_id: pdf.userId,
+          timestamp: pdf.timestamp,
+          download_url: pdf.downloadUrl,
+          thumbnail_url: pdf.thumbnailUrl,
+          size: pdf.size,
+          tags: pdf.tags,
+          page_count: pdf.pageCount,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return {
+        id: data.id,
+        name: data.name,
+        userId: data.user_id,
+        timestamp: data.timestamp,
+        visibility: 'world',
+        downloadUrl: data.download_url,
+        thumbnailUrl: data.thumbnail_url,
+        size: data.size,
+        tags: data.tags as PDFTag[],
+        pageCount: data.page_count,
+      };
+    } else {
+      // Save private PDFs to localStorage
+      const pdfs = this.getPDFs();
+      const newPDF: PDFDocument = {
+        ...pdf,
+        id: Date.now().toString(),
+      };
+      pdfs.push(newPDF);
+      localStorage.setItem(PDFS_KEY, JSON.stringify(pdfs));
+      return newPDF;
+    }
   },
 
   getPDFs(): PDFDocument[] {
@@ -20,29 +54,63 @@ export const mockStorage = {
     return stored ? JSON.parse(stored) : [];
   },
 
-  getPublicPDFs(): PDFDocument[] {
-    return this.getPDFs().filter(pdf => pdf.visibility === 'public');
+  async getWorldPDFs(): Promise<PDFDocument[]> {
+    const { data, error } = await supabase
+      .from('world_pdfs')
+      .select('*')
+      .order('timestamp', { ascending: false });
+
+    if (error) throw error;
+
+    return data.map(pdf => ({
+      id: pdf.id,
+      name: pdf.name,
+      userId: pdf.user_id,
+      timestamp: pdf.timestamp,
+      visibility: 'world' as const,
+      downloadUrl: pdf.download_url,
+      thumbnailUrl: pdf.thumbnail_url,
+      size: pdf.size,
+      tags: pdf.tags as PDFTag[],
+      pageCount: pdf.page_count,
+    }));
   },
 
   getUserPDFs(userId: string): PDFDocument[] {
-    return this.getPDFs().filter(pdf => pdf.userId === userId);
+    return this.getPDFs().filter(pdf => pdf.userId === userId && pdf.visibility === 'private');
   },
 
-  searchPublicPDFs(query: string, tags: PDFTag[]): PDFDocument[] {
-    const publicPDFs = this.getPublicPDFs();
-    const lowerQuery = query.toLowerCase();
+  async searchWorldPDFs(query: string, tags: PDFTag[]): Promise<PDFDocument[]> {
+    let dbQuery = supabase
+      .from('world_pdfs')
+      .select('*');
 
-    return publicPDFs.filter(pdf => {
-      // Check if query matches title or user ID
-      const matchesQuery = !query || 
-        pdf.name.toLowerCase().includes(lowerQuery) ||
-        pdf.userId.toLowerCase().includes(lowerQuery);
+    // Add search conditions
+    if (query) {
+      const lowerQuery = query.toLowerCase();
+      dbQuery = dbQuery.or(`name.ilike.%${query}%,user_id.ilike.%${query}%`);
+    }
 
-      // Check if PDF has any of the selected tags
-      const matchesTags = tags.length === 0 || 
-        tags.some(tag => pdf.tags.includes(tag));
+    // Add tag filter if tags are selected
+    if (tags.length > 0) {
+      dbQuery = dbQuery.overlaps('tags', tags);
+    }
 
-      return matchesQuery && matchesTags;
-    });
+    const { data, error } = await dbQuery.order('timestamp', { ascending: false });
+
+    if (error) throw error;
+
+    return data.map(pdf => ({
+      id: pdf.id,
+      name: pdf.name,
+      userId: pdf.user_id,
+      timestamp: pdf.timestamp,
+      visibility: 'world' as const,
+      downloadUrl: pdf.download_url,
+      thumbnailUrl: pdf.thumbnail_url,
+      size: pdf.size,
+      tags: pdf.tags as PDFTag[],
+      pageCount: pdf.page_count,
+    }));
   },
 };

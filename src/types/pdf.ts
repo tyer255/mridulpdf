@@ -5,7 +5,7 @@ export interface PDFDocument {
   name: string;
   userId: string;
   timestamp: number;
-  visibility: 'private' | 'public';
+  visibility: 'private' | 'world';
   downloadUrl: string;
   thumbnailUrl?: string;
   size?: number;
