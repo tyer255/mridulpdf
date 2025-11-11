@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { mockStorage } from '@/lib/mockStorage';
 import { PDFDocument, PDFTag } from '@/types/pdf';
 import { Card } from '@/components/ui/card';
@@ -13,10 +14,11 @@ const Home = () => {
   const [filteredPDFs, setFilteredPDFs] = useState<PDFDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const location = useLocation();
 
   useEffect(() => {
     loadPublicPDFs();
-  }, []);
+  }, [location.pathname]);
 
   const loadPublicPDFs = async () => {
     try {
