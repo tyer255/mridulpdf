@@ -17,6 +17,7 @@ export type Database = {
       world_pdfs: {
         Row: {
           created_at: string
+          display_name: string | null
           download_url: string
           id: string
           name: string
@@ -29,6 +30,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          display_name?: string | null
           download_url: string
           id?: string
           name: string
@@ -41,6 +43,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          display_name?: string | null
           download_url?: string
           id?: string
           name?: string

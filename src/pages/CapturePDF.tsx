@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Camera, X, Save, Loader2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import { useAnonymousUser } from '@/hooks/useAnonymousUser';
+import { useAnonymousUser, getUserDisplayName } from '@/hooks/useAnonymousUser';
 import { useToast } from '@/hooks/use-toast';
 import { jsPDF } from 'jspdf';
 import { mockStorage } from '@/lib/mockStorage';
@@ -15,6 +15,7 @@ import { PDFTag } from '@/types/pdf';
 import TagSelector from '@/components/TagSelector';
 import ImageEnhancer from '@/components/ImageEnhancer';
 import { generateThumbnail } from '@/lib/imageProcessing';
+import Header from '@/components/Header';
 
 const CapturePDF = () => {
   const [images, setImages] = useState<string[]>([]);
@@ -35,17 +36,45 @@ const CapturePDF = () => {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files) return;
+    if (!files || files.length === 0) {
+      toast({
+        title: "No images selected",
+        description: "Please capture or select images",
+        variant: "destructive"
+      });
+      return;
+    }
 
     Array.from(files).forEach((file) => {
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file",
+          description: "Please select only image files",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = (event) => {
         if (event.target?.result) {
           setImages((prev) => [...prev, event.target!.result as string]);
         }
       };
+      reader.onerror = () => {
+        toast({
+          title: "Error",
+          description: "Failed to read image file",
+          variant: "destructive"
+        });
+      };
       reader.readAsDataURL(file);
     });
+
+    // Reset file input to allow selecting the same file again
+    if (e.target) {
+      e.target.value = '';
+    }
   };
 
   const removeImage = (index: number) => {
@@ -145,7 +174,7 @@ const CapturePDF = () => {
         size: pdfBlob.size,
         tags,
         pageCount: totalPages,
-      });
+      }, getUserDisplayName());
 
       toast({
         title: "Success!",
@@ -167,6 +196,7 @@ const CapturePDF = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
+      <Header />
       <div className="p-6">
         <h1 className="text-2xl font-bold text-foreground mb-6">Capture PDF</h1>
 

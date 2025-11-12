@@ -4,18 +4,31 @@ import { mockStorage } from '@/lib/mockStorage';
 import { PDFDocument, PDFTag } from '@/types/pdf';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, FileText, Clock, RefreshCw } from 'lucide-react';
+import { Download, FileText, Clock, RefreshCw, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import SearchBar from '@/components/SearchBar';
 import { Badge } from '@/components/ui/badge';
+import Header from '@/components/Header';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const Home = () => {
   const [worldPDFs, setWorldPDFs] = useState<PDFDocument[]>([]);
   const [filteredPDFs, setFilteredPDFs] = useState<PDFDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const { toast } = useToast();
   const location = useLocation();
+  const currentUserId = localStorage.getItem('anonymous_user_id');
 
   useEffect(() => {
     loadWorldPDFs();
@@ -88,6 +101,25 @@ const Home = () => {
     }
   };
 
+  const handleDelete = async (pdfId: string) => {
+    try {
+      await mockStorage.deletePDF(pdfId, 'world');
+      await loadWorldPDFs();
+      toast({
+        title: "Success",
+        description: "PDF deleted successfully",
+      });
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete PDF",
+        variant: "destructive"
+      });
+    }
+    setDeleteId(null);
+  };
+
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('en-US', {
       month: 'short',
@@ -98,6 +130,7 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
+      <Header />
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold text-foreground">World PDFs</h1>
@@ -173,14 +206,24 @@ const Home = () => {
                           </div>
                         )}
                       </div>
-                      <Button
-                        size="icon"
-                        variant="default"
-                        onClick={() => handleDownload(pdf)}
-                        className="ml-2 flex-shrink-0"
-                      >
-                        <Download className="w-4 h-4" />
-                      </Button>
+                      <div className="flex gap-1 ml-2 flex-shrink-0">
+                        <Button
+                          size="icon"
+                          variant="default"
+                          onClick={() => handleDownload(pdf)}
+                        >
+                          <Download className="w-4 h-4" />
+                        </Button>
+                        {currentUserId === pdf.userId && (
+                          <Button
+                            size="icon"
+                            variant="destructive"
+                            onClick={() => setDeleteId(pdf.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -189,6 +232,23 @@ const Home = () => {
           </div>
         )}
       </div>
+
+      <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete PDF</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this PDF? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteId && handleDelete(deleteId)}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

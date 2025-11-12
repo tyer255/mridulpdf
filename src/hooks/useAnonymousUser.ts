@@ -1,23 +1,28 @@
 import { useEffect, useState } from 'react';
-import { v4 as uuidv4 } from 'uuid';
+import { useNavigate } from 'react-router-dom';
 
 const USER_ID_KEY = 'anonymous_user_id';
 
 export const useAnonymousUser = () => {
   const [userId, setUserId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Check if user ID exists in localStorage
-    let storedUserId = localStorage.getItem(USER_ID_KEY);
+    const storedUserId = localStorage.getItem(USER_ID_KEY);
     
     if (!storedUserId) {
-      // Generate new anonymous user ID
-      storedUserId = uuidv4();
-      localStorage.setItem(USER_ID_KEY, storedUserId);
+      // Redirect to login if no user ID
+      navigate('/login');
+      return;
     }
     
     setUserId(storedUserId);
-  }, []);
+  }, [navigate]);
 
   return userId;
+};
+
+export const getUserDisplayName = (): string => {
+  return localStorage.getItem('user_display_name') || 'Guest User';
 };

@@ -8,6 +8,8 @@ import AddPDF from "./pages/AddPDF";
 import Library from "./pages/Library";
 import CapturePDF from "./pages/CapturePDF";
 import ImportPDF from "./pages/ImportPDF";
+import Login from "./pages/Login";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import BottomNav from "./components/BottomNav";
 
@@ -20,11 +22,13 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          <Route path="/login" element={<Login />} />
           <Route path="/" element={<Index />} />
           <Route path="/add" element={<AddPDF />} />
           <Route path="/library" element={<Library />} />
           <Route path="/capture" element={<CapturePDF />} />
           <Route path="/import" element={<ImportPDF />} />
+          <Route path="/profile" element={<Profile />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

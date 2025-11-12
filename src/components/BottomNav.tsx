@@ -1,9 +1,14 @@
-import { Home, PlusCircle, FolderOpen } from 'lucide-react';
+import { Home, PlusCircle, FolderOpen, User } from 'lucide-react';
 import { useLocation, Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
 const BottomNav = () => {
   const location = useLocation();
+  
+  // Hide bottom nav on login page
+  if (location.pathname === '/login') {
+    return null;
+  }
   
   const isActive = (path: string) => {
     if (path === '/') {
@@ -46,6 +51,17 @@ const BottomNav = () => {
         >
           <FolderOpen className={cn('w-6 h-6', isActive('/library') && 'fill-current')} />
           <span className="text-xs font-medium">Library</span>
+        </Link>
+
+        <Link
+          to="/profile"
+          className={cn(
+            'flex flex-col items-center justify-center flex-1 h-full gap-1 transition-colors',
+            isActive('/profile') ? 'text-primary' : 'text-muted-foreground'
+          )}
+        >
+          <User className={cn('w-6 h-6', isActive('/profile') && 'fill-current')} />
+          <span className="text-xs font-medium">Profile</span>
         </Link>
       </div>
     </nav>

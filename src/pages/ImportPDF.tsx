@@ -5,12 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Upload, Loader2, FileText, X } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import { useAnonymousUser } from '@/hooks/useAnonymousUser';
+import { useAnonymousUser, getUserDisplayName } from '@/hooks/useAnonymousUser';
 import { useToast } from '@/hooks/use-toast';
 import { mockStorage } from '@/lib/mockStorage';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { PDFTag } from '@/types/pdf';
 import TagSelector from '@/components/TagSelector';
+import Header from '@/components/Header';
 
 const ImportPDF = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -91,7 +92,7 @@ const ImportPDF = () => {
           tags,
           thumbnailUrl: undefined, // Could generate from PDF first page
           pageCount: undefined,
-        });
+        }, getUserDisplayName());
 
         toast({
           title: "Success!",
@@ -125,6 +126,7 @@ const ImportPDF = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
+      <Header />
       <div className="p-6">
         <h1 className="text-2xl font-bold text-foreground mb-6">Import PDF</h1>
 

@@ -3,14 +3,27 @@ import { mockStorage } from '@/lib/mockStorage';
 import { PDFDocument } from '@/types/pdf';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileText, Clock, Eye } from 'lucide-react';
+import { FileText, Clock, Eye, Trash2 } from 'lucide-react';
 import { useAnonymousUser } from '@/hooks/useAnonymousUser';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import Header from '@/components/Header';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const Library = () => {
   const [myPDFs, setMyPDFs] = useState<PDFDocument[]>([]);
+  const [worldPDFs, setWorldPDFs] = useState<PDFDocument[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteId, setDeleteId] = useState<{ id: string; visibility: 'private' | 'world' } | null>(null);
   const userId = useAnonymousUser();
   const { toast } = useToast();
 
@@ -24,8 +37,17 @@ const Library = () => {
     if (!userId) return;
     
     try {
-      const pdfs = mockStorage.getUserPDFs(userId);
-      setMyPDFs(pdfs.sort((a, b) => b.timestamp - a.timestamp));
+      // Load private PDFs from localStorage
+      const privatePDFs = mockStorage.getUserPDFs(userId);
+      
+      // Load world PDFs from the user
+      const allWorldPDFs = await mockStorage.getWorldPDFs();
+      const userWorldPDFs = allWorldPDFs.filter(pdf => pdf.userId === userId);
+      
+      // Combine and sort
+      const allPDFs = [...privatePDFs, ...userWorldPDFs].sort((a, b) => b.timestamp - a.timestamp);
+      
+      setMyPDFs(allPDFs);
     } catch (error) {
       console.error('Error loading my PDFs:', error);
       toast({
@@ -64,6 +86,27 @@ const Library = () => {
     }
   };
 
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    
+    try {
+      await mockStorage.deletePDF(deleteId.id, deleteId.visibility);
+      await loadMyPDFs();
+      toast({
+        title: "Success",
+        description: "PDF deleted successfully",
+      });
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete PDF",
+        variant: "destructive"
+      });
+    }
+    setDeleteId(null);
+  };
+
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('en-US', {
       month: 'short',
@@ -84,6 +127,7 @@ const Library = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
+      <Header />
       <div className="p-6">
         <h1 className="text-2xl font-bold text-foreground mb-6">My Library</h1>
         
@@ -152,14 +196,22 @@ const Library = () => {
                           </div>
                         )}
                       </div>
-                      <Button
-                        size="icon"
-                        variant="default"
-                        onClick={() => handleView(pdf)}
-                        className="ml-2 flex-shrink-0"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
+                      <div className="flex gap-1 ml-2 flex-shrink-0">
+                        <Button
+                          size="icon"
+                          variant="default"
+                          onClick={() => handleView(pdf)}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="destructive"
+                          onClick={() => setDeleteId({ id: pdf.id, visibility: pdf.visibility })}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -168,6 +220,23 @@ const Library = () => {
           </div>
         )}
       </div>
+
+      <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete PDF</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this PDF? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

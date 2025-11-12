@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 const PDFS_KEY = 'scan_share_pdfs';
 
 export const mockStorage = {
-  async savePDF(pdf: Omit<PDFDocument, 'id'>): Promise<PDFDocument> {
+  async savePDF(pdf: Omit<PDFDocument, 'id'>, displayName?: string): Promise<PDFDocument> {
     if (pdf.visibility === 'world') {
       // Save to global database
       const { data, error } = await supabase
@@ -18,6 +18,7 @@ export const mockStorage = {
           size: pdf.size,
           tags: pdf.tags,
           page_count: pdf.pageCount,
+          display_name: displayName || 'Guest User',
         })
         .select()
         .single();
@@ -85,10 +86,10 @@ export const mockStorage = {
       .from('world_pdfs')
       .select('*');
 
-    // Add search conditions
+    // Add search conditions with input sanitization
     if (query) {
-      const lowerQuery = query.toLowerCase();
-      dbQuery = dbQuery.or(`name.ilike.%${query}%,user_id.ilike.%${query}%`);
+      const sanitized = query.trim().slice(0, 100);
+      dbQuery = dbQuery.or(`name.ilike.%${sanitized}%,user_id.ilike.%${sanitized}%`);
     }
 
     // Add tag filter if tags are selected
@@ -112,5 +113,20 @@ export const mockStorage = {
       tags: pdf.tags as PDFTag[],
       pageCount: pdf.page_count,
     }));
+  },
+
+  async deletePDF(pdfId: string, visibility: 'private' | 'world'): Promise<void> {
+    if (visibility === 'world') {
+      const { error } = await supabase
+        .from('world_pdfs')
+        .delete()
+        .eq('id', pdfId);
+
+      if (error) throw error;
+    } else {
+      const pdfs = this.getPDFs();
+      const filtered = pdfs.filter(pdf => pdf.id !== pdfId);
+      localStorage.setItem(PDFS_KEY, JSON.stringify(filtered));
+    }
   },
 };
