@@ -38,8 +38,30 @@ const Library = () => {
     }
   };
 
-  const handleView = (pdf: PDFDocument) => {
-    window.open(pdf.downloadUrl, '_blank');
+  const handleView = async (pdf: PDFDocument) => {
+    try {
+      const response = await fetch(pdf.downloadUrl);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${pdf.name}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: "✅ PDF downloaded successfully",
+      });
+    } catch (error) {
+      console.error('Download error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to download PDF",
+        variant: "destructive"
+      });
+    }
   };
 
   const formatDate = (timestamp: number) => {
