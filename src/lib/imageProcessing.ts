@@ -206,14 +206,52 @@ export const generateThumbnail = async (
         return;
       }
 
-      const scale = maxWidth / img.width;
-      canvas.width = maxWidth;
-      canvas.height = img.height * scale;
+      const scale = Math.min(1, maxWidth / img.width);
+      canvas.width = Math.floor(img.width * scale);
+      canvas.height = Math.floor(img.height * scale);
 
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       resolve(canvas.toDataURL('image/jpeg', 0.7));
     };
     img.onerror = reject;
+    img.src = dataUrl;
+  });
+};
+
+/**
+ * Prepare image for PDF: downscale to max width and convert to high-quality JPEG
+ */
+
+/**
+ * Prepare image for PDF: downscale to max width and convert to high-quality JPEG
+ */
+export const prepareImageForPdf = async (
+  dataUrl: string,
+  maxWidthPx: number = 2000,
+): Promise<{ dataUrl: string; width: number; height: number }> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxWidthPx / img.width);
+      const width = Math.floor(img.width * scale);
+      const height = Math.floor(img.height * scale);
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Could not get canvas context'));
+        return;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Force JPEG to avoid unsupported formats like HEIC/WEBP in some browsers
+      const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+      resolve({ dataUrl: jpegDataUrl, width, height });
+    };
+    img.onerror = () => reject(new Error('Unsupported image format'));
     img.src = dataUrl;
   });
 };

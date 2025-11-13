@@ -14,7 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import { PDFTag } from '@/types/pdf';
 import TagSelector from '@/components/TagSelector';
 import ImageEnhancer from '@/components/ImageEnhancer';
-import { generateThumbnail } from '@/lib/imageProcessing';
+import { generateThumbnail, prepareImageForPdf } from '@/lib/imageProcessing';
 import Header from '@/components/Header';
 
 const CapturePDF = () => {
@@ -128,21 +128,40 @@ const CapturePDF = () => {
     setUploading(true);
 
     try {
-      const pdf = new jsPDF();
+      // Use A4 portrait by default; units in mm
+      const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
       const totalPages = images.length;
-      
+
       for (let i = 0; i < images.length; i++) {
-        const img = images[i];
-        
+        const original = images[i];
+
+        // Normalize camera photos: downscale and force JPEG to avoid format issues (e.g., HEIC/WEBP)
+        const processed = await prepareImageForPdf(original, 2000);
+        const imgData = processed.dataUrl;
+        const imgWidthPx = processed.width;
+        const imgHeightPx = processed.height;
+
         if (i > 0) {
           pdf.addPage();
         }
-        
-        const imgProps = pdf.getImageProperties(img);
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-        
-        pdf.addImage(img, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+
+        // Compute draw size to fit within page while keeping aspect ratio
+        const imgRatio = imgWidthPx / imgHeightPx;
+        let drawWidth = pageWidth;
+        let drawHeight = drawWidth / imgRatio;
+        if (drawHeight > pageHeight) {
+          drawHeight = pageHeight;
+          drawWidth = pageHeight * imgRatio;
+        }
+
+        // Center horizontally and vertically
+        const x = (pageWidth - drawWidth) / 2;
+        const y = (pageHeight - drawHeight) / 2;
+
+        pdf.addImage(imgData, 'JPEG', x, y, drawWidth, drawHeight);
 
         // Add page numbers if enabled
         if (addPageNumbers) {
@@ -151,8 +170,8 @@ const CapturePDF = () => {
           pdf.setTextColor(128, 128, 128);
           pdf.text(
             `Page ${pageNum} of ${totalPages}`,
-            pdfWidth / 2,
-            pdf.internal.pageSize.getHeight() - 10,
+            pageWidth / 2,
+            pageHeight - 10,
             { align: 'center' }
           );
         }
@@ -161,7 +180,7 @@ const CapturePDF = () => {
       const pdfBlob = pdf.output('blob');
       const pdfDataUrl = pdf.output('dataurlstring');
 
-      // Generate thumbnail from first image
+      // Generate thumbnail from first image (use processed JPEG for reliability)
       const thumbnailUrl = await generateThumbnail(images[0]);
 
       await mockStorage.savePDF({
@@ -205,7 +224,7 @@ const CapturePDF = () => {
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            capture="environment"
+            capture
             multiple
             className="hidden"
             onChange={handleFileSelect}
