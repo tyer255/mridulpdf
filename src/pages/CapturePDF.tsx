@@ -28,27 +28,33 @@ const CapturePDF = () => {
   const [tags, setTags] = useState<PDFTag[]>([]);
   const [addPageNumbers, setAddPageNumbers] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const userId = useAnonymousUser();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleCapture = () => {
-    fileInputRef.current?.click();
+    cameraInputRef.current?.click();
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleGallerySelect = () => {
+    galleryInputRef.current?.click();
+  };
+
+  // Handle camera capture - show filter modal for single image
+  const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) {
       toast({
-        title: "No images selected",
-        description: "Please capture or select images",
+        title: "No image captured",
+        description: "Please capture an image",
         variant: "destructive"
       });
       return;
     }
 
-    const file = files[0]; // Process first image only for filter preview
+    const file = files[0];
     
     if (!file.type.startsWith('image/')) {
       toast({
@@ -62,7 +68,7 @@ const CapturePDF = () => {
     const reader = new FileReader();
     reader.onload = (event) => {
       if (event.target?.result) {
-        // Show filter modal instead of directly adding to images
+        // Show filter modal for camera capture
         setCapturedImageForFilter(event.target.result as string);
         setShowFilterModal(true);
       }
@@ -76,7 +82,58 @@ const CapturePDF = () => {
     };
     reader.readAsDataURL(file);
 
-    // Reset file input to allow selecting the same file again
+    // Reset file input
+    if (e.target) {
+      e.target.value = '';
+    }
+  };
+
+  // Handle gallery selection - add multiple images directly
+  const handleGallerySelection = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) {
+      toast({
+        title: "No images selected",
+        description: "Please select images from gallery",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    let validFileCount = 0;
+    Array.from(files).forEach((file) => {
+      if (!file.type.startsWith('image/')) {
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setImages((prev) => [...prev, event.target!.result as string]);
+          validFileCount++;
+        }
+      };
+      reader.onerror = () => {
+        toast({
+          title: "Error",
+          description: "Failed to read some image files",
+          variant: "destructive"
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Show success toast after a brief delay
+    setTimeout(() => {
+      if (validFileCount > 0) {
+        toast({
+          title: "Images added!",
+          description: `${files.length} image${files.length > 1 ? 's' : ''} added to PDF`,
+        });
+      }
+    }, 500);
+
+    // Reset file input
     if (e.target) {
       e.target.value = '';
     }
@@ -247,17 +304,27 @@ const CapturePDF = () => {
         <h1 className="text-2xl font-bold text-foreground mb-6">Capture PDF</h1>
 
         <div className="space-y-6 max-w-2xl mx-auto">
+          {/* Camera Input - Single capture with filter */}
           <input
-            ref={fileInputRef}
+            ref={cameraInputRef}
             type="file"
             accept="image/*"
             capture
-            multiple
             className="hidden"
-            onChange={handleFileSelect}
+            onChange={handleCameraCapture}
           />
 
-          <div>
+          {/* Gallery Input - Multiple selection without filter modal */}
+          <input
+            ref={galleryInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={handleGallerySelection}
+          />
+
+          <div className="grid grid-cols-2 gap-3">
             <Button
               onClick={handleCapture}
               size="lg"
@@ -265,7 +332,17 @@ const CapturePDF = () => {
               variant="default"
             >
               <Camera className="mr-2 h-5 w-5" />
-              Capture Image
+              Capture Photo
+            </Button>
+            
+            <Button
+              onClick={handleGallerySelect}
+              size="lg"
+              className="w-full"
+              variant="secondary"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+              Select from Gallery
             </Button>
           </div>
 
