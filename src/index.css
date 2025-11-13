@@ -96,3 +96,14 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Hide Lovable badge - make it transparent and non-clickable */
+[data-lovable-badge],
+a[href*="lovable.dev"][target="_blank"],
+div[style*="position: fixed"][style*="bottom"],
+iframe[src*="lovable"] {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  display: none !important;
+}
