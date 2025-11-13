@@ -219,8 +219,69 @@ export const generateThumbnail = async (
 };
 
 /**
- * Prepare image for PDF: downscale to max width and convert to high-quality JPEG
+ * Apply filters to an image (brightness, contrast, black & white)
  */
+export interface FilterOptions {
+  brightness: number; // -100 to 100
+  contrast: number; // -100 to 100
+  blackAndWhite: boolean;
+}
+
+export const applyFilters = async (
+  imageDataUrl: string,
+  options: FilterOptions
+): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Could not get canvas context'));
+        return;
+      }
+
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+
+      let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+
+      // Apply brightness and contrast
+      const brightnessFactor = options.brightness * 2.55; // Convert to 0-255 range
+      const contrastFactor = (259 * (options.contrast + 255)) / (255 * (259 - options.contrast));
+
+      for (let i = 0; i < data.length; i += 4) {
+        // Apply brightness
+        let r = data[i] + brightnessFactor;
+        let g = data[i + 1] + brightnessFactor;
+        let b = data[i + 2] + brightnessFactor;
+
+        // Apply contrast
+        r = contrastFactor * (r - 128) + 128;
+        g = contrastFactor * (g - 128) + 128;
+        b = contrastFactor * (b - 128) + 128;
+
+        // Apply black and white
+        if (options.blackAndWhite) {
+          const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+          r = g = b = gray;
+        }
+
+        // Clamp values
+        data[i] = Math.max(0, Math.min(255, r));
+        data[i + 1] = Math.max(0, Math.min(255, g));
+        data[i + 2] = Math.max(0, Math.min(255, b));
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+      resolve(canvas.toDataURL('image/jpeg', 0.92));
+    };
+    img.onerror = reject;
+    img.src = imageDataUrl;
+  });
+};
 
 /**
  * Prepare image for PDF: downscale to max width and convert to high-quality JPEG
