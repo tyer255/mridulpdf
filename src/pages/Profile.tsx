@@ -122,6 +122,22 @@ const Profile = () => {
             </CardContent>
           </Card>
 
+          <Card>
+            <CardHeader>
+              <CardTitle>Settings</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Button
+                onClick={() => navigate('/notifications')}
+                variant="outline"
+                className="w-full justify-start gap-2"
+              >
+                <Bell className="h-4 w-4" />
+                Notification Settings
+              </Button>
+            </CardContent>
+          </Card>
+
           <Button
             onClick={handleLogout}
             variant="destructive"
