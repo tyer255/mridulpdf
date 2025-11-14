@@ -17,6 +17,7 @@ import ImageEnhancer from '@/components/ImageEnhancer';
 import { generateThumbnail, prepareImageForPdf } from '@/lib/imageProcessing';
 import Header from '@/components/Header';
 import ImageFilterModal from '@/components/ImageFilterModal';
+import heic2any from 'heic2any';
 
 const CapturePDF = () => {
   const [images, setImages] = useState<string[]>([]);
@@ -42,27 +43,37 @@ const CapturePDF = () => {
     galleryInputRef.current?.click();
   };
 
-  // Handle camera capture - show filter modal for single image
-  const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) {
-      toast({
-        title: "No image captured",
-        description: "Please capture an image",
-        variant: "destructive"
-      });
-      return;
-    }
+// Handle camera capture - show filter modal for single image
+const handleCameraCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const files = e.target.files;
+  if (!files || files.length === 0) {
+    toast({
+      title: "No image captured",
+      description: "Please capture an image",
+      variant: "destructive"
+    });
+    return;
+  }
 
-    const file = files[0];
-    
-    if (!file.type.startsWith('image/')) {
-      toast({
-        title: "Invalid file",
-        description: "Please select only image files",
-        variant: "destructive"
-      });
-      return;
+  let file = files[0];
+
+  const isImage = (file.type || '').startsWith('image/') || /\.(heic|heif|jpg|jpeg|png|webp)$/i.test(file.name);
+  if (!isImage) {
+    toast({
+      title: "Invalid file",
+      description: "Please select only image files",
+      variant: "destructive"
+    });
+    return;
+  }
+
+  const isHeic = /image\/heic|image\/heif/i.test(file.type) || /\.(heic|heif)$/i.test(file.name);
+
+  try {
+    if (isHeic) {
+      const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 }) as Blob | Blob[];
+      const blob = Array.isArray(converted) ? converted[0] : converted;
+      file = new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg' });
     }
 
     const reader = new FileReader();
@@ -81,63 +92,90 @@ const CapturePDF = () => {
       });
     };
     reader.readAsDataURL(file);
-
-    // Reset file input
+  } catch (err) {
+    console.error('Camera image processing failed:', err);
+    toast({
+      title: 'Unsupported image',
+      description: 'Some camera images are in HEIC format. We try to convert them automatically, but this one failed. Please try another image.',
+      variant: 'destructive'
+    });
+  } finally {
     if (e.target) {
       e.target.value = '';
     }
-  };
+  }
+};
 
-  // Handle gallery selection - add multiple images directly
-  const handleGallerySelection = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) {
+// Handle gallery selection - add multiple images directly
+const handleGallerySelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const files = e.target.files;
+  if (!files || files.length === 0) {
+    toast({
+      title: "No images selected",
+      description: "Please select images from gallery",
+      variant: "destructive"
+    });
+    return;
+  }
+
+  try {
+    const results = (await Promise.all(
+      Array.from(files).map(async (file) => {
+        const isImage = (file.type || '').startsWith('image/') || /\.(heic|heif|jpg|jpeg|png|webp)$/i.test(file.name);
+        if (!isImage) return null;
+
+        try {
+          let workingFile: File = file;
+          const isHeic = /image\/heic|image\/heif/i.test(file.type) || /\.(heic|heif)$/i.test(file.name);
+          if (isHeic) {
+            const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 }) as Blob | Blob[];
+            const blob = Array.isArray(converted) ? converted[0] : converted;
+            workingFile = new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg' });
+          }
+
+          // Read as data URL
+          const dataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = () => reject(new Error('read_fail'));
+            reader.readAsDataURL(workingFile);
+          });
+
+          return dataUrl;
+        } catch (err) {
+          console.warn('Skipping file due to processing error:', err);
+          return null;
+        }
+      })
+    )).filter((u): u is string => !!u);
+
+    if (results.length > 0) {
+      setImages((prev) => [...prev, ...results]);
       toast({
-        title: "No images selected",
-        description: "Please select images from gallery",
+        title: "Images added!",
+        description: `${results.length} image${results.length > 1 ? 's' : ''} added to PDF`
+      });
+    } else {
+      toast({
+        title: "No usable images",
+        description: "Selected files could not be processed",
         variant: "destructive"
       });
-      return;
     }
-
-    let validFileCount = 0;
-    Array.from(files).forEach((file) => {
-      if (!file.type.startsWith('image/')) {
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setImages((prev) => [...prev, event.target!.result as string]);
-          validFileCount++;
-        }
-      };
-      reader.onerror = () => {
-        toast({
-          title: "Error",
-          description: "Failed to read some image files",
-          variant: "destructive"
-        });
-      };
-      reader.readAsDataURL(file);
+  } catch (error) {
+    console.error('Gallery selection failed:', error);
+    toast({
+      title: "Error",
+      description: "Failed to read some image files",
+      variant: "destructive"
     });
-
-    // Show success toast after a brief delay
-    setTimeout(() => {
-      if (validFileCount > 0) {
-        toast({
-          title: "Images added!",
-          description: `${files.length} image${files.length > 1 ? 's' : ''} added to PDF`,
-        });
-      }
-    }, 500);
-
+  } finally {
     // Reset file input
     if (e.target) {
       e.target.value = '';
     }
-  };
+  }
+};
 
   const handleFilterApply = (filteredImage: string) => {
     setImages((prev) => [...prev, filteredImage]);
