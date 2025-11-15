@@ -13,11 +13,13 @@ import Login from "./pages/Login";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import NotificationSettings from "./pages/NotificationSettings";
+import AppearanceSettings from "./pages/AppearanceSettings";
 import BottomNav from "./components/BottomNav";
 import { NotificationPermission } from "./components/NotificationPermission";
 import { WorldUploadNotification } from "./components/WorldUploadNotification";
 import { useNotifications } from "./hooks/useNotifications";
 import { shouldAskPermission } from "./lib/notifications";
+import { applyTheme, getAppPreferences } from "./lib/preferences";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +28,10 @@ const App = () => {
   const { notification, clearNotification } = useNotifications();
 
   useEffect(() => {
+    // Apply saved theme on app load
+    const prefs = getAppPreferences();
+    applyTheme(prefs.theme);
+
     // Ask for permission after 3 seconds if needed
     const timer = setTimeout(() => {
       if (shouldAskPermission()) {
@@ -51,6 +57,7 @@ const App = () => {
             <Route path="/import" element={<ImportPDF />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/notifications" element={<NotificationSettings />} />
+            <Route path="/appearance" element={<AppearanceSettings />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

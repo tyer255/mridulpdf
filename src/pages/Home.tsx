@@ -4,11 +4,13 @@ import { mockStorage } from '@/lib/mockStorage';
 import { PDFDocument, PDFTag } from '@/types/pdf';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, FileText, Clock, RefreshCw, Trash2 } from 'lucide-react';
+import { Download, FileText, Clock, RefreshCw, Trash2, QrCode } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import SearchBar from '@/components/SearchBar';
 import { Badge } from '@/components/ui/badge';
 import Header from '@/components/Header';
+import { QRShareModal } from '@/components/QRShareModal';
+import { alertEvent } from '@/lib/preferences';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,6 +28,8 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [selectedPDF, setSelectedPDF] = useState<PDFDocument | null>(null);
   const { toast } = useToast();
   const location = useLocation();
   const currentUserId = localStorage.getItem('anonymous_user_id');
@@ -88,6 +92,7 @@ const Home = () => {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
       
+      alertEvent.downloadComplete(pdf.name);
       toast({
         title: "✅ PDF downloaded successfully",
       });
@@ -99,6 +104,11 @@ const Home = () => {
         variant: "destructive"
       });
     }
+  };
+
+  const handleShareQR = (pdf: PDFDocument) => {
+    setSelectedPDF(pdf);
+    setQrModalOpen(true);
   };
 
   const handleDelete = async (pdfId: string) => {
@@ -209,6 +219,14 @@ const Home = () => {
                       <div className="flex gap-1 ml-2 flex-shrink-0">
                         <Button
                           size="icon"
+                          variant="outline"
+                          onClick={() => handleShareQR(pdf)}
+                          title="Share via QR"
+                        >
+                          <QrCode className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="icon"
                           variant="default"
                           onClick={() => handleDownload(pdf)}
                         >
@@ -232,7 +250,18 @@ const Home = () => {
           </div>
         )}
       </div>
+      
+      {/* QR Share Modal */}
+      {selectedPDF && (
+        <QRShareModal
+          open={qrModalOpen}
+          onOpenChange={setQrModalOpen}
+          pdfUrl={selectedPDF.downloadUrl}
+          fileName={selectedPDF.name}
+        />
+      )}
 
+      {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Save, LogOut, Bell } from 'lucide-react';
+import { ArrowLeft, Save, LogOut, Bell, Palette } from 'lucide-react';
 import { mockStorage } from '@/lib/mockStorage';
 
 const USER_ID_KEY = 'anonymous_user_id';
@@ -126,7 +126,15 @@ const Profile = () => {
             <CardHeader>
               <CardTitle>Settings</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
+              <Button
+                onClick={() => navigate('/appearance')}
+                variant="outline"
+                className="w-full justify-start gap-2"
+              >
+                <Palette className="h-4 w-4" />
+                Appearance & Preferences
+              </Button>
               <Button
                 onClick={() => navigate('/notifications')}
                 variant="outline"
