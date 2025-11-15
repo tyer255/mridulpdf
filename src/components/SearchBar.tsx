@@ -44,7 +44,7 @@ const SearchBar = ({ onSearch }: SearchBarProps) => {
           placeholder="Search by title or user ID..."
           value={query}
           onChange={(e) => handleQueryChange(e.target.value)}
-          className="pl-10"
+          className="pl-10 text-foreground placeholder:text-muted-foreground"
         />
       </div>
 
@@ -59,8 +59,8 @@ const SearchBar = ({ onSearch }: SearchBarProps) => {
                 className="cursor-pointer hover:bg-primary/80 transition-colors text-xs"
                 onClick={() => toggleTag(tag)}
               >
-                {tag}
-                {isSelected && <X className="ml-1 h-3 w-3" />}
+                <span className={isSelected ? 'text-primary-foreground' : 'text-foreground'}>{tag}</span>
+                {isSelected && <X className="ml-1 h-3 w-3 text-primary-foreground" />}
               </Badge>
             );
           })}

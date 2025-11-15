@@ -130,18 +130,18 @@ const Profile = () => {
               <Button
                 onClick={() => navigate('/appearance')}
                 variant="outline"
-                className="w-full justify-start gap-2"
+                className="w-full justify-start gap-2 text-foreground hover:text-foreground"
               >
-                <Palette className="h-4 w-4" />
-                Appearance & Preferences
+                <Palette className="h-4 w-4 text-foreground" />
+                <span className="text-foreground">Appearance & Preferences</span>
               </Button>
               <Button
                 onClick={() => navigate('/notifications')}
                 variant="outline"
-                className="w-full justify-start gap-2"
+                className="w-full justify-start gap-2 text-foreground hover:text-foreground"
               >
-                <Bell className="h-4 w-4" />
-                Notification Settings
+                <Bell className="h-4 w-4 text-foreground" />
+                <span className="text-foreground">Notification Settings</span>
               </Button>
             </CardContent>
           </Card>
@@ -149,11 +149,11 @@ const Profile = () => {
           <Button
             onClick={handleLogout}
             variant="destructive"
-            className="w-full"
+            className="w-full text-destructive-foreground"
             size="lg"
           >
-            <LogOut className="mr-2 h-5 w-5" />
-            Logout
+            <LogOut className="mr-2 h-5 w-5 text-destructive-foreground" />
+            <span className="text-destructive-foreground">Logout</span>
           </Button>
         </div>
       </div>

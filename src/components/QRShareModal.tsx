@@ -67,9 +67,9 @@ export const QRShareModal = ({ open, onOpenChange, pdfUrl, fileName }: QRShareMo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md bg-card border-border">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 text-foreground">
             <Share2 className="w-5 h-5 text-primary" />
             Share via QR
           </DialogTitle>
@@ -100,28 +100,28 @@ export const QRShareModal = ({ open, onOpenChange, pdfUrl, fileName }: QRShareMo
             <Button
               variant="outline"
               onClick={handleCopyLink}
-              className="flex flex-col items-center gap-1 h-auto py-3"
+              className="flex flex-col items-center gap-1 h-auto py-3 text-foreground hover:text-foreground"
             >
-              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              <span className="text-xs">{copied ? 'Copied!' : 'Copy Link'}</span>
+              {copied ? <Check className="w-4 h-4 text-foreground" /> : <Copy className="w-4 h-4 text-foreground" />}
+              <span className="text-xs text-foreground">{copied ? 'Copied!' : 'Copy Link'}</span>
             </Button>
             
             <Button
               variant="outline"
               onClick={handleDownloadQR}
-              className="flex flex-col items-center gap-1 h-auto py-3"
+              className="flex flex-col items-center gap-1 h-auto py-3 text-foreground hover:text-foreground"
             >
-              <Download className="w-4 h-4" />
-              <span className="text-xs">Download</span>
+              <Download className="w-4 h-4 text-foreground" />
+              <span className="text-xs text-foreground">Download</span>
             </Button>
             
             <Button
               variant="outline"
               onClick={handleShareQR}
-              className="flex flex-col items-center gap-1 h-auto py-3"
+              className="flex flex-col items-center gap-1 h-auto py-3 text-foreground hover:text-foreground"
             >
-              <Share2 className="w-4 h-4" />
-              <span className="text-xs">Share</span>
+              <Share2 className="w-4 h-4 text-foreground" />
+              <span className="text-xs text-foreground">Share</span>
             </Button>
           </div>
         </div>

@@ -29,7 +29,7 @@ const TagSelector = ({ selectedTags, onChange }: TagSelectorProps) => {
 
   return (
     <div>
-      <Label>Tags (Optional)</Label>
+      <Label className="text-foreground">Tags (Optional)</Label>
       <p className="text-sm text-muted-foreground mb-3">
         Help others discover your PDF by adding relevant tags
       </p>
@@ -43,8 +43,8 @@ const TagSelector = ({ selectedTags, onChange }: TagSelectorProps) => {
               className="cursor-pointer hover:bg-primary/80 transition-colors"
               onClick={() => toggleTag(tag)}
             >
-              {tag}
-              {isSelected && <X className="ml-1 h-3 w-3" />}
+              <span className={isSelected ? 'text-primary-foreground' : 'text-foreground'}>{tag}</span>
+              {isSelected && <X className="ml-1 h-3 w-3 text-primary-foreground" />}
             </Badge>
           );
         })}
