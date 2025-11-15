@@ -21,9 +21,9 @@ const Header = () => {
     <div className="bg-card border-b border-border px-4 py-3 flex items-center justify-between">
       <h1 className="text-xl font-bold text-foreground">MRIDUL PDF</h1>
       <Link to="/profile">
-        <Button variant="ghost" size="sm" className="gap-2">
-          <User className="h-4 w-4" />
-          <span className="text-xs font-mono">{guestId}...</span>
+        <Button variant="ghost" size="sm" className="gap-2 text-foreground hover:text-foreground">
+          <User className="h-4 w-4 text-foreground" />
+          <span className="text-xs font-mono text-foreground">{guestId}...</span>
         </Button>
       </Link>
     </div>

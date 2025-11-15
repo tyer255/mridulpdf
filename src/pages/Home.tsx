@@ -193,14 +193,14 @@ const Home = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <FileText className="w-4 h-4 text-primary flex-shrink-0" />
+                         <div className="flex items-center gap-2 mb-1">
+                          <FileText className="w-4 h-4 text-foreground flex-shrink-0" />
                           <h3 className="font-semibold text-foreground truncate">
                             {pdf.name}
                           </h3>
                         </div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                          <Clock className="w-3 h-3" />
+                          <Clock className="w-3 h-3 text-muted-foreground" />
                           <span>{formatDate(pdf.timestamp)}</span>
                           {pdf.pageCount && (
                             <span>• {pdf.pageCount} pages</span>
@@ -222,23 +222,26 @@ const Home = () => {
                           variant="outline"
                           onClick={() => handleShareQR(pdf)}
                           title="Share via QR"
+                          className="text-foreground hover:text-foreground"
                         >
-                          <QrCode className="w-4 h-4" />
+                          <QrCode className="w-4 h-4 text-foreground" />
                         </Button>
                         <Button
                           size="icon"
                           variant="default"
                           onClick={() => handleDownload(pdf)}
+                          className="text-primary-foreground"
                         >
-                          <Download className="w-4 h-4" />
+                          <Download className="w-4 h-4 text-primary-foreground" />
                         </Button>
                         {currentUserId === pdf.userId && (
                           <Button
                             size="icon"
                             variant="destructive"
                             onClick={() => setDeleteId(pdf.id)}
+                            className="text-destructive-foreground"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-4 h-4 text-destructive-foreground" />
                           </Button>
                         )}
                       </div>

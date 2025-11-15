@@ -134,9 +134,9 @@ const AppearanceSettings = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-between py-3 border-b">
+            <div className="flex items-center justify-between py-3 border-b border-border">
               <div>
-                <Label className="text-base font-medium">Enable Sound Effects</Label>
+                <Label className="text-base font-medium text-foreground">Enable Sound Effects</Label>
                 <p className="text-sm text-muted-foreground">Play sounds for uploads, downloads, etc.</p>
               </div>
               <Switch checked={prefs.soundEnabled} onCheckedChange={handleSoundToggle} />
@@ -155,9 +155,9 @@ const AppearanceSettings = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-between py-3 border-b">
+            <div className="flex items-center justify-between py-3 border-b border-border">
               <div>
-                <Label className="text-base font-medium">Enable Voice Alerts</Label>
+                <Label className="text-base font-medium text-foreground">Enable Voice Alerts</Label>
                 <p className="text-sm text-muted-foreground">Hear spoken notifications</p>
               </div>
               <Switch checked={prefs.voiceEnabled} onCheckedChange={handleVoiceToggle} />
@@ -166,19 +166,19 @@ const AppearanceSettings = () => {
             {prefs.voiceEnabled && (
               <>
                 <div className="space-y-3 pt-2">
-                  <Label className="text-sm font-medium">Voice Type</Label>
+                  <Label className="text-sm font-medium text-foreground">Voice Type</Label>
                   <RadioGroup value={prefs.voiceType} onValueChange={handleVoiceTypeChange}>
-                    <div className="flex items-center space-x-2 p-3 rounded-lg border hover:bg-accent/5">
+                    <div className="flex items-center space-x-2 p-3 rounded-lg border border-border hover:bg-accent/5">
                       <RadioGroupItem value="female" id="female" />
-                      <Label htmlFor="female" className="flex-1 cursor-pointer">Female AI (Soft)</Label>
+                      <Label htmlFor="female" className="flex-1 cursor-pointer text-foreground">Female AI (Soft)</Label>
                     </div>
-                    <div className="flex items-center space-x-2 p-3 rounded-lg border hover:bg-accent/5">
+                    <div className="flex items-center space-x-2 p-3 rounded-lg border border-border hover:bg-accent/5">
                       <RadioGroupItem value="male" id="male" />
-                      <Label htmlFor="male" className="flex-1 cursor-pointer">Male AI (Deep)</Label>
+                      <Label htmlFor="male" className="flex-1 cursor-pointer text-foreground">Male AI (Deep)</Label>
                     </div>
-                    <div className="flex items-center space-x-2 p-3 rounded-lg border hover:bg-accent/5">
+                    <div className="flex items-center space-x-2 p-3 rounded-lg border border-border hover:bg-accent/5">
                       <RadioGroupItem value="robotic" id="robotic" />
-                      <Label htmlFor="robotic" className="flex-1 cursor-pointer">Robotic AI (Digital)</Label>
+                      <Label htmlFor="robotic" className="flex-1 cursor-pointer text-foreground">Robotic AI (Digital)</Label>
                     </div>
                   </RadioGroup>
                 </div>
@@ -204,7 +204,7 @@ const AppearanceSettings = () => {
 
             <div className="flex items-center justify-between py-3">
               <div>
-                <Label className="text-base font-medium">Auto-generate QR</Label>
+                <Label className="text-base font-medium text-foreground">Auto-generate QR</Label>
                 <p className="text-sm text-muted-foreground">Create QR codes for world uploads</p>
               </div>
               <Switch checked={prefs.autoQR} onCheckedChange={handleAutoQRToggle} />
