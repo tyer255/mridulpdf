@@ -18,6 +18,7 @@ import { generateThumbnail, prepareImageForPdf } from '@/lib/imageProcessing';
 import Header from '@/components/Header';
 import ImageFilterModal from '@/components/ImageFilterModal';
 import heic2any from 'heic2any';
+import { alertEvent } from '@/lib/preferences';
 
 const CapturePDF = () => {
   const [images, setImages] = useState<string[]>([]);
@@ -309,6 +310,7 @@ const handleGallerySelection = async (e: React.ChangeEvent<HTMLInputElement>) =>
         pageCount: totalPages,
       }, getUserDisplayName());
 
+      alertEvent.uploadComplete(pdfName.trim());
       toast({
         title: "Success!",
         description: `PDF created and saved as ${visibility}`

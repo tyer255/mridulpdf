@@ -12,6 +12,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { PDFTag } from '@/types/pdf';
 import TagSelector from '@/components/TagSelector';
 import Header from '@/components/Header';
+import { alertEvent } from '@/lib/preferences';
 
 const ImportPDF = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -94,6 +95,7 @@ const ImportPDF = () => {
           pageCount: undefined,
         }, getUserDisplayName());
 
+        alertEvent.uploadComplete(pdfName.trim());
         toast({
           title: "Success!",
           description: `PDF uploaded as ${visibility}`

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { WorldUploadNotification } from '@/types/notification';
 import { getNotificationPreferences, showNativeNotification, registerServiceWorker } from '@/lib/notifications';
+import { alertEvent } from '@/lib/preferences';
 
 export const useNotifications = () => {
   const [notification, setNotification] = useState<WorldUploadNotification | null>(null);
@@ -44,6 +45,9 @@ export const useNotifications = () => {
             notificationData.fileName,
             notificationData.fileId
           );
+
+          // Trigger sound and voice alert
+          alertEvent.newWorldFile(notificationData.userName, notificationData.fileName);
         }
       )
       .subscribe();
