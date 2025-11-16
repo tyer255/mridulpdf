@@ -37,6 +37,12 @@ export const applyTheme = (theme: ThemeType) => {
   root.style.setProperty('--background', colors.background);
   root.style.setProperty('--foreground', colors.foreground);
   
+  // Set card colors for proper contrast
+  root.style.setProperty('--card', colors.background);
+  root.style.setProperty('--card-foreground', colors.foreground);
+  root.style.setProperty('--muted', colors.secondary);
+  root.style.setProperty('--muted-foreground', colors.foreground);
+  
   root.setAttribute('data-theme', theme);
 };
 
