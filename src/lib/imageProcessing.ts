@@ -194,7 +194,7 @@ export const cropImage = (
  */
 export const generateThumbnail = async (
   dataUrl: string,
-  maxWidth: number = 200
+  maxWidth: number = 150
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -211,7 +211,8 @@ export const generateThumbnail = async (
       canvas.height = Math.floor(img.height * scale);
 
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL('image/jpeg', 0.7));
+      // Lower quality for smaller file size and faster loading
+      resolve(canvas.toDataURL('image/jpeg', 0.6));
     };
     img.onerror = reject;
     img.src = dataUrl;
@@ -288,7 +289,7 @@ export const applyFilters = async (
  */
 export const prepareImageForPdf = async (
   dataUrl: string,
-  maxWidthPx: number = 2000,
+  maxWidthPx: number = 1200,
 ): Promise<{ dataUrl: string; width: number; height: number }> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -308,8 +309,8 @@ export const prepareImageForPdf = async (
       canvas.height = height;
       ctx.drawImage(img, 0, 0, width, height);
 
-      // Force JPEG to avoid unsupported formats like HEIC/WEBP in some browsers
-      const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+      // Force JPEG with better compression for smaller size
+      const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.85);
       resolve({ dataUrl: jpegDataUrl, width, height });
     };
     img.onerror = () => reject(new Error('Unsupported image format'));

@@ -15,7 +15,8 @@ interface QRShareModalProps {
 export const QRShareModal = ({ open, onOpenChange, pdfUrl, fileName }: QRShareModalProps) => {
   const [copied, setCopied] = useState(false);
   
-  const shareUrl = `${window.location.origin}/view?pdf=${encodeURIComponent(pdfUrl)}`;
+  // Use actual PDF URL directly instead of creating a viewer URL
+  const shareUrl = pdfUrl || `${window.location.origin}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareUrl);

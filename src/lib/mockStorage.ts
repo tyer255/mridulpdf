@@ -39,14 +39,21 @@ export const mockStorage = {
       };
     } else {
       // Save private PDFs to localStorage
-      const pdfs = this.getPDFs();
-      const newPDF: PDFDocument = {
-        ...pdf,
-        id: Date.now().toString(),
-      };
-      pdfs.push(newPDF);
-      localStorage.setItem(PDFS_KEY, JSON.stringify(pdfs));
-      return newPDF;
+      try {
+        const pdfs = this.getPDFs();
+        const newPDF: PDFDocument = {
+          ...pdf,
+          id: Date.now().toString(),
+        };
+        pdfs.push(newPDF);
+        localStorage.setItem(PDFS_KEY, JSON.stringify(pdfs));
+        return newPDF;
+      } catch (error: any) {
+        if (error.name === 'QuotaExceededError') {
+          throw new Error('Storage quota exceeded. Please delete some private PDFs or reduce PDF size.');
+        }
+        throw error;
+      }
     }
   },
 

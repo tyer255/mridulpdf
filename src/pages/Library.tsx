@@ -157,12 +157,13 @@ const Library = () => {
             {myPDFs.map((pdf) => (
               <Card key={pdf.id} className="p-4 hover:shadow-md transition-shadow">
                 <div className="flex gap-3">
-                  {pdf.thumbnailUrl && (
+                   {pdf.thumbnailUrl && (
                     <div className="flex-shrink-0">
                       <img
                         src={pdf.thumbnailUrl}
                         alt="PDF preview"
                         className="w-16 h-20 object-cover rounded border border-border"
+                        loading="lazy"
                       />
                     </div>
                   )}

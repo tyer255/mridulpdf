@@ -244,14 +244,14 @@ const handleGallerySelection = async (e: React.ChangeEvent<HTMLInputElement>) =>
 
     try {
       // Use A4 portrait by default; units in mm
-      const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+      const pdf = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
       const totalPages = images.length;
 
       for (let i = 0; i < images.length; i++) {
         const original = images[i];
 
-        // Normalize camera photos: downscale and force JPEG to avoid format issues (e.g., HEIC/WEBP)
-        const processed = await prepareImageForPdf(original, 2000);
+        // Optimize: reduce size for faster processing (1200px max instead of 2000px)
+        const processed = await prepareImageForPdf(original, 1200);
         const imgData = processed.dataUrl;
         const imgWidthPx = processed.width;
         const imgHeightPx = processed.height;
@@ -317,11 +317,11 @@ const handleGallerySelection = async (e: React.ChangeEvent<HTMLInputElement>) =>
       });
 
       navigate('/library');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating PDF:', error);
       toast({
         title: "Error",
-        description: "Failed to create PDF",
+        description: error.message || "Failed to create PDF",
         variant: "destructive"
       });
     } finally {

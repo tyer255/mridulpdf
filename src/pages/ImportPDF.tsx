@@ -96,6 +96,7 @@ const ImportPDF = () => {
         }, getUserDisplayName());
 
         alertEvent.uploadComplete(pdfName.trim());
+        setUploading(false);
         toast({
           title: "Success!",
           description: `PDF uploaded as ${visibility}`
@@ -115,11 +116,11 @@ const ImportPDF = () => {
       };
       
       reader.readAsDataURL(selectedFile);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading PDF:', error);
       toast({
         title: "Error",
-        description: "Failed to upload PDF",
+        description: error.message || "Failed to upload PDF",
         variant: "destructive"
       });
       setUploading(false);

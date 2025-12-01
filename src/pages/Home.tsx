@@ -120,24 +120,24 @@ const Home = () => {
   };
 
   const handleShareQR = async (pdf: PDFDocument) => {
-    // Fetch download URL on-demand for world PDFs if not already loaded
-    if (pdf.visibility === 'world' && !pdf.downloadUrl) {
-      try {
+    try {
+      // Fetch download URL on-demand for world PDFs if not already loaded
+      if (pdf.visibility === 'world' && !pdf.downloadUrl) {
         const downloadUrl = await mockStorage.getPDFDownloadUrl(pdf.id);
         setSelectedPDF({ ...pdf, downloadUrl });
-      } catch (error) {
-        console.error('Error fetching download URL:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load PDF for sharing",
-          variant: "destructive"
-        });
-        return;
+      } else {
+        // Private PDFs already have downloadUrl from localStorage
+        setSelectedPDF(pdf);
       }
-    } else {
-      setSelectedPDF(pdf);
+      setQrModalOpen(true);
+    } catch (error) {
+      console.error('Error preparing QR share:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load PDF for sharing",
+        variant: "destructive"
+      });
     }
-    setQrModalOpen(true);
   };
 
   const handleDelete = async (pdfId: string) => {
@@ -210,12 +210,13 @@ const Home = () => {
             {filteredPDFs.map((pdf) => (
               <Card key={pdf.id} className="p-4 hover:shadow-md transition-shadow">
                 <div className="flex gap-3">
-                  {pdf.thumbnailUrl && (
+                   {pdf.thumbnailUrl && (
                     <div className="flex-shrink-0">
                       <img
                         src={pdf.thumbnailUrl}
                         alt="PDF preview"
                         className="w-16 h-20 object-cover rounded border border-border"
+                        loading="lazy"
                       />
                     </div>
                   )}
@@ -294,6 +295,15 @@ const Home = () => {
       )}
 
       {/* Delete Confirmation Dialog */}
+      {selectedPDF && (
+        <QRShareModal
+          open={qrModalOpen}
+          onOpenChange={setQrModalOpen}
+          pdfUrl={selectedPDF.downloadUrl || ''}
+          fileName={selectedPDF.name || ''}
+        />
+      )}
+
       <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
