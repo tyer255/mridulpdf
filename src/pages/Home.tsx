@@ -38,16 +38,24 @@ const Home = () => {
     loadWorldPDFs();
   }, [location.pathname]);
 
-  const loadWorldPDFs = async () => {
+  const loadWorldPDFs = async (retryCount = 0) => {
     try {
       const pdfs = await mockStorage.getWorldPDFs();
       setWorldPDFs(pdfs);
       setFilteredPDFs(pdfs);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading world PDFs:', error);
+      
+      // Retry once if timeout error
+      if (retryCount === 0 && error?.code === '57014') {
+        console.log('Retrying with smaller limit...');
+        setTimeout(() => loadWorldPDFs(1), 1000);
+        return;
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to load world PDFs",
+        description: error?.code === '57014' ? "Loading PDFs... Please refresh" : "Failed to load world PDFs",
         variant: "destructive"
       });
     } finally {
@@ -81,7 +89,12 @@ const Home = () => {
 
   const handleDownload = async (pdf: PDFDocument) => {
     try {
-      const response = await fetch(pdf.downloadUrl);
+      // Fetch download URL on-demand for world PDFs
+      const downloadUrl = pdf.visibility === 'world' && !pdf.downloadUrl
+        ? await mockStorage.getPDFDownloadUrl(pdf.id)
+        : pdf.downloadUrl;
+        
+      const response = await fetch(downloadUrl);
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -106,8 +119,24 @@ const Home = () => {
     }
   };
 
-  const handleShareQR = (pdf: PDFDocument) => {
-    setSelectedPDF(pdf);
+  const handleShareQR = async (pdf: PDFDocument) => {
+    // Fetch download URL on-demand for world PDFs if not already loaded
+    if (pdf.visibility === 'world' && !pdf.downloadUrl) {
+      try {
+        const downloadUrl = await mockStorage.getPDFDownloadUrl(pdf.id);
+        setSelectedPDF({ ...pdf, downloadUrl });
+      } catch (error) {
+        console.error('Error fetching download URL:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load PDF for sharing",
+          variant: "destructive"
+        });
+        return;
+      }
+    } else {
+      setSelectedPDF(pdf);
+    }
     setQrModalOpen(true);
   };
 
