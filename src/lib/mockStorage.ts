@@ -55,11 +55,14 @@ export const mockStorage = {
     return stored ? JSON.parse(stored) : [];
   },
 
-  async getWorldPDFs(): Promise<PDFDocument[]> {
+  async getWorldPDFs(limit: number = 50, offset: number = 0): Promise<PDFDocument[]> {
+    // Don't load download_url initially to avoid timeout with large base64 PDFs
     const { data, error } = await supabase
       .from('world_pdfs')
-      .select('*')
-      .order('timestamp', { ascending: false });
+      .select('id, name, user_id, timestamp, thumbnail_url, size, tags, page_count, display_name')
+      .order('timestamp', { ascending: false })
+      .limit(limit)
+      .range(offset, offset + limit - 1);
 
     if (error) throw error;
 
@@ -69,7 +72,7 @@ export const mockStorage = {
       userId: pdf.user_id,
       timestamp: pdf.timestamp,
       visibility: 'world' as const,
-      downloadUrl: pdf.download_url,
+      downloadUrl: '', // Will be fetched on-demand when downloading
       thumbnailUrl: pdf.thumbnail_url,
       size: pdf.size,
       tags: pdf.tags as PDFTag[],
@@ -77,18 +80,33 @@ export const mockStorage = {
     }));
   },
 
+  async getPDFDownloadUrl(pdfId: string): Promise<string> {
+    // Fetch download URL only when needed
+    const { data, error } = await supabase
+      .from('world_pdfs')
+      .select('download_url')
+      .eq('id', pdfId)
+      .single();
+
+    if (error) throw error;
+    return data.download_url;
+  },
+
   getUserPDFs(userId: string): PDFDocument[] {
     return this.getPDFs().filter(pdf => pdf.userId === userId && pdf.visibility === 'private');
   },
 
-  async searchWorldPDFs(query: string, tags: PDFTag[]): Promise<PDFDocument[]> {
+  async searchWorldPDFs(query: string, tags: PDFTag[], limit: number = 50): Promise<PDFDocument[]> {
     let dbQuery = supabase
       .from('world_pdfs')
-      .select('*');
+      .select('id, name, user_id, timestamp, thumbnail_url, size, tags, page_count, display_name');
 
-    // Add search conditions with input sanitization
+    // Add search conditions with input sanitization and escape SQL wildcards
     if (query) {
-      const sanitized = query.trim().slice(0, 100);
+      const sanitized = query.trim().slice(0, 100)
+        .replace(/\\/g, '\\\\')
+        .replace(/%/g, '\\%')
+        .replace(/_/g, '\\_');
       dbQuery = dbQuery.or(`name.ilike.%${sanitized}%,user_id.ilike.%${sanitized}%`);
     }
 
@@ -97,7 +115,9 @@ export const mockStorage = {
       dbQuery = dbQuery.overlaps('tags', tags);
     }
 
-    const { data, error } = await dbQuery.order('timestamp', { ascending: false });
+    const { data, error } = await dbQuery
+      .order('timestamp', { ascending: false })
+      .limit(limit);
 
     if (error) throw error;
 
@@ -107,7 +127,7 @@ export const mockStorage = {
       userId: pdf.user_id,
       timestamp: pdf.timestamp,
       visibility: 'world' as const,
-      downloadUrl: pdf.download_url,
+      downloadUrl: '', // Will be fetched on-demand
       thumbnailUrl: pdf.thumbnail_url,
       size: pdf.size,
       tags: pdf.tags as PDFTag[],

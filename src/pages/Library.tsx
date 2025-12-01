@@ -40,7 +40,7 @@ const Library = () => {
       // Load private PDFs from localStorage
       const privatePDFs = mockStorage.getUserPDFs(userId);
       
-      // Load world PDFs from the user
+      // Load world PDFs from the user with retry logic
       const allWorldPDFs = await mockStorage.getWorldPDFs();
       const userWorldPDFs = allWorldPDFs.filter(pdf => pdf.userId === userId);
       
@@ -48,11 +48,11 @@ const Library = () => {
       const allPDFs = [...privatePDFs, ...userWorldPDFs].sort((a, b) => b.timestamp - a.timestamp);
       
       setMyPDFs(allPDFs);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading my PDFs:', error);
       toast({
         title: "Error",
-        description: "Failed to load your PDFs",
+        description: error?.code === '57014' ? "Loading PDFs... Please refresh" : "Failed to load your PDFs",
         variant: "destructive"
       });
     } finally {
@@ -62,7 +62,12 @@ const Library = () => {
 
   const handleView = async (pdf: PDFDocument) => {
     try {
-      const response = await fetch(pdf.downloadUrl);
+      // Fetch download URL on-demand for world PDFs
+      const downloadUrl = pdf.visibility === 'world' && !pdf.downloadUrl
+        ? await mockStorage.getPDFDownloadUrl(pdf.id)
+        : pdf.downloadUrl;
+        
+      const response = await fetch(downloadUrl);
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
