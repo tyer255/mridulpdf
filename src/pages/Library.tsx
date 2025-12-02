@@ -62,7 +62,13 @@ const Library = () => {
 
   const handleView = async (pdf: PDFDocument) => {
     try {
-      const response = await fetch(pdf.downloadUrl);
+      // For world PDFs, fetch download URL if not already present
+      let downloadUrl = pdf.downloadUrl;
+      if (pdf.visibility === 'world' && !downloadUrl) {
+        downloadUrl = await mockStorage.getPDFDownloadUrl(pdf.id);
+      }
+      
+      const response = await fetch(downloadUrl);
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
