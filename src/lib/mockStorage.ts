@@ -24,8 +24,13 @@ async function uploadToStorage(
   return path;
 }
 
-// Helper to get public URL from storage path
+// Helper to get public URL from storage path or return data URL as-is
 function getStorageUrl(bucket: string, path: string): string {
+  // If it's already a data URL (old format), return as-is
+  if (path.startsWith('data:')) {
+    return path;
+  }
+  // Otherwise, it's a storage path - get public URL
   const { data } = supabase.storage.from(bucket).getPublicUrl(path);
   return data.publicUrl;
 }
@@ -106,9 +111,10 @@ export const mockStorage = {
   },
 
   async getWorldPDFs(limit: number = 50, offset: number = 0): Promise<PDFDocument[]> {
+    // Don't fetch download_url initially for old base64 data to avoid timeout
     const { data, error } = await supabase
       .from('world_pdfs')
-      .select('id, name, user_id, timestamp, download_url, thumbnail_url, size, tags, page_count, display_name')
+      .select('id, name, user_id, timestamp, thumbnail_url, size, tags, page_count, display_name')
       .order('timestamp', { ascending: false })
       .limit(limit)
       .range(offset, offset + limit - 1);
@@ -121,7 +127,7 @@ export const mockStorage = {
       userId: pdf.user_id,
       timestamp: pdf.timestamp,
       visibility: 'world' as const,
-      downloadUrl: getStorageUrl('pdfs', pdf.download_url),
+      downloadUrl: '', // Will be fetched on-demand
       thumbnailUrl: pdf.thumbnail_url ? getStorageUrl('thumbnails', pdf.thumbnail_url) : undefined,
       size: pdf.size,
       tags: pdf.tags as PDFTag[],
@@ -137,6 +143,7 @@ export const mockStorage = {
       .single();
 
     if (error) throw error;
+    // Handle both old base64 data and new storage paths
     return getStorageUrl('pdfs', data.download_url);
   },
 
@@ -147,7 +154,7 @@ export const mockStorage = {
   async searchWorldPDFs(query: string, tags: PDFTag[], limit: number = 50): Promise<PDFDocument[]> {
     let dbQuery = supabase
       .from('world_pdfs')
-      .select('id, name, user_id, timestamp, download_url, thumbnail_url, size, tags, page_count, display_name');
+      .select('id, name, user_id, timestamp, thumbnail_url, size, tags, page_count, display_name');
 
     // Add search conditions with input sanitization and escape SQL wildcards
     if (query) {
@@ -175,7 +182,7 @@ export const mockStorage = {
       userId: pdf.user_id,
       timestamp: pdf.timestamp,
       visibility: 'world' as const,
-      downloadUrl: getStorageUrl('pdfs', pdf.download_url),
+      downloadUrl: '', // Will be fetched on-demand
       thumbnailUrl: pdf.thumbnail_url ? getStorageUrl('thumbnails', pdf.thumbnail_url) : undefined,
       size: pdf.size,
       tags: pdf.tags as PDFTag[],

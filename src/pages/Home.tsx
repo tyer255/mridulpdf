@@ -89,7 +89,13 @@ const Home = () => {
 
   const handleDownload = async (pdf: PDFDocument) => {
     try {
-      const response = await fetch(pdf.downloadUrl);
+      // For world PDFs, fetch download URL if not already present
+      let downloadUrl = pdf.downloadUrl;
+      if (pdf.visibility === 'world' && !downloadUrl) {
+        downloadUrl = await mockStorage.getPDFDownloadUrl(pdf.id);
+      }
+      
+      const response = await fetch(downloadUrl);
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -116,7 +122,14 @@ const Home = () => {
 
   const handleShareQR = async (pdf: PDFDocument) => {
     try {
-      setSelectedPDF(pdf);
+      // For world PDFs, fetch download URL if not already present
+      let pdfToShare = pdf;
+      if (pdf.visibility === 'world' && !pdf.downloadUrl) {
+        const downloadUrl = await mockStorage.getPDFDownloadUrl(pdf.id);
+        pdfToShare = { ...pdf, downloadUrl };
+      }
+      
+      setSelectedPDF(pdfToShare);
       setQrModalOpen(true);
     } catch (error) {
       console.error('Error preparing QR share:', error);
