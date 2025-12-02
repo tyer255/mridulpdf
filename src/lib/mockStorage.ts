@@ -3,18 +3,56 @@ import { supabase } from '@/integrations/supabase/client';
 
 const PDFS_KEY = 'scan_share_pdfs';
 
+// Helper to upload file to Supabase Storage
+async function uploadToStorage(
+  bucket: string,
+  path: string,
+  dataUrl: string
+): Promise<string> {
+  // Convert data URL to blob
+  const response = await fetch(dataUrl);
+  const blob = await response.blob();
+
+  const { error } = await supabase.storage.from(bucket).upload(path, blob, {
+    upsert: true,
+    contentType: blob.type,
+  });
+
+  if (error) throw error;
+
+  // Return the storage path
+  return path;
+}
+
+// Helper to get public URL from storage path
+function getStorageUrl(bucket: string, path: string): string {
+  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+  return data.publicUrl;
+}
+
 export const mockStorage = {
   async savePDF(pdf: Omit<PDFDocument, 'id'>, displayName?: string): Promise<PDFDocument> {
     if (pdf.visibility === 'world') {
-      // Save to global database
+      const pdfId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Upload PDF and thumbnail to storage
+      const pdfPath = `pdfs/${pdf.userId}/${pdfId}.pdf`;
+      const thumbnailPath = pdf.thumbnailUrl ? `thumbnails/${pdf.userId}/${pdfId}.jpg` : undefined;
+
+      await uploadToStorage('pdfs', pdfPath, pdf.downloadUrl);
+      if (pdf.thumbnailUrl && thumbnailPath) {
+        await uploadToStorage('thumbnails', thumbnailPath, pdf.thumbnailUrl);
+      }
+
+      // Save metadata to database with storage paths
       const { data, error } = await supabase
         .from('world_pdfs')
         .insert({
           name: pdf.name,
           user_id: pdf.userId,
           timestamp: pdf.timestamp,
-          download_url: pdf.downloadUrl,
-          thumbnail_url: pdf.thumbnailUrl,
+          download_url: pdfPath,
+          thumbnail_url: thumbnailPath,
           size: pdf.size,
           tags: pdf.tags,
           page_count: pdf.pageCount,
@@ -31,29 +69,34 @@ export const mockStorage = {
         userId: data.user_id,
         timestamp: data.timestamp,
         visibility: 'world',
-        downloadUrl: data.download_url,
-        thumbnailUrl: data.thumbnail_url,
+        downloadUrl: getStorageUrl('pdfs', data.download_url),
+        thumbnailUrl: data.thumbnail_url ? getStorageUrl('thumbnails', data.thumbnail_url) : undefined,
         size: data.size,
         tags: data.tags as PDFTag[],
         pageCount: data.page_count,
       };
     } else {
-      // Save private PDFs to localStorage
-      try {
-        const pdfs = this.getPDFs();
-        const newPDF: PDFDocument = {
-          ...pdf,
-          id: Date.now().toString(),
-        };
-        pdfs.push(newPDF);
-        localStorage.setItem(PDFS_KEY, JSON.stringify(pdfs));
-        return newPDF;
-      } catch (error: any) {
-        if (error.name === 'QuotaExceededError') {
-          throw new Error('Storage quota exceeded. Please delete some private PDFs or reduce PDF size.');
-        }
-        throw error;
+      // Save private PDFs to storage as well
+      const pdfId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const pdfPath = `pdfs/${pdf.userId}/${pdfId}.pdf`;
+      const thumbnailPath = pdf.thumbnailUrl ? `thumbnails/${pdf.userId}/${pdfId}.jpg` : undefined;
+
+      await uploadToStorage('pdfs', pdfPath, pdf.downloadUrl);
+      if (pdf.thumbnailUrl && thumbnailPath) {
+        await uploadToStorage('thumbnails', thumbnailPath, pdf.thumbnailUrl);
       }
+
+      // Store metadata in localStorage with storage paths
+      const pdfs = this.getPDFs();
+      const newPDF: PDFDocument = {
+        ...pdf,
+        id: pdfId,
+        downloadUrl: getStorageUrl('pdfs', pdfPath),
+        thumbnailUrl: thumbnailPath ? getStorageUrl('thumbnails', thumbnailPath) : undefined,
+      };
+      pdfs.push(newPDF);
+      localStorage.setItem(PDFS_KEY, JSON.stringify(pdfs));
+      return newPDF;
     }
   },
 
@@ -63,10 +106,9 @@ export const mockStorage = {
   },
 
   async getWorldPDFs(limit: number = 50, offset: number = 0): Promise<PDFDocument[]> {
-    // Don't load download_url initially to avoid timeout with large base64 PDFs
     const { data, error } = await supabase
       .from('world_pdfs')
-      .select('id, name, user_id, timestamp, thumbnail_url, size, tags, page_count, display_name')
+      .select('id, name, user_id, timestamp, download_url, thumbnail_url, size, tags, page_count, display_name')
       .order('timestamp', { ascending: false })
       .limit(limit)
       .range(offset, offset + limit - 1);
@@ -79,8 +121,8 @@ export const mockStorage = {
       userId: pdf.user_id,
       timestamp: pdf.timestamp,
       visibility: 'world' as const,
-      downloadUrl: '', // Will be fetched on-demand when downloading
-      thumbnailUrl: pdf.thumbnail_url,
+      downloadUrl: getStorageUrl('pdfs', pdf.download_url),
+      thumbnailUrl: pdf.thumbnail_url ? getStorageUrl('thumbnails', pdf.thumbnail_url) : undefined,
       size: pdf.size,
       tags: pdf.tags as PDFTag[],
       pageCount: pdf.page_count,
@@ -88,7 +130,6 @@ export const mockStorage = {
   },
 
   async getPDFDownloadUrl(pdfId: string): Promise<string> {
-    // Fetch download URL only when needed
     const { data, error } = await supabase
       .from('world_pdfs')
       .select('download_url')
@@ -96,7 +137,7 @@ export const mockStorage = {
       .single();
 
     if (error) throw error;
-    return data.download_url;
+    return getStorageUrl('pdfs', data.download_url);
   },
 
   getUserPDFs(userId: string): PDFDocument[] {
@@ -106,7 +147,7 @@ export const mockStorage = {
   async searchWorldPDFs(query: string, tags: PDFTag[], limit: number = 50): Promise<PDFDocument[]> {
     let dbQuery = supabase
       .from('world_pdfs')
-      .select('id, name, user_id, timestamp, thumbnail_url, size, tags, page_count, display_name');
+      .select('id, name, user_id, timestamp, download_url, thumbnail_url, size, tags, page_count, display_name');
 
     // Add search conditions with input sanitization and escape SQL wildcards
     if (query) {
@@ -134,8 +175,8 @@ export const mockStorage = {
       userId: pdf.user_id,
       timestamp: pdf.timestamp,
       visibility: 'world' as const,
-      downloadUrl: '', // Will be fetched on-demand
-      thumbnailUrl: pdf.thumbnail_url,
+      downloadUrl: getStorageUrl('pdfs', pdf.download_url),
+      thumbnailUrl: pdf.thumbnail_url ? getStorageUrl('thumbnails', pdf.thumbnail_url) : undefined,
       size: pdf.size,
       tags: pdf.tags as PDFTag[],
       pageCount: pdf.page_count,
@@ -144,6 +185,22 @@ export const mockStorage = {
 
   async deletePDF(pdfId: string, visibility: 'private' | 'world'): Promise<void> {
     if (visibility === 'world') {
+      // Get the storage paths before deleting from database
+      const { data } = await supabase
+        .from('world_pdfs')
+        .select('download_url, thumbnail_url, user_id')
+        .eq('id', pdfId)
+        .single();
+
+      if (data) {
+        // Delete from storage
+        await supabase.storage.from('pdfs').remove([data.download_url]);
+        if (data.thumbnail_url) {
+          await supabase.storage.from('thumbnails').remove([data.thumbnail_url]);
+        }
+      }
+
+      // Delete from database
       const { error } = await supabase
         .from('world_pdfs')
         .delete()
@@ -151,8 +208,33 @@ export const mockStorage = {
 
       if (error) throw error;
     } else {
+      // Get PDF info to delete from storage
       const pdfs = this.getPDFs();
-      const filtered = pdfs.filter(pdf => pdf.id !== pdfId);
+      const pdf = pdfs.find(p => p.id === pdfId);
+      
+      if (pdf) {
+        // Extract storage path from URL
+        try {
+          const pdfUrl = new URL(pdf.downloadUrl);
+          const pdfPath = pdfUrl.pathname.split('/storage/v1/object/public/pdfs/')[1];
+          if (pdfPath) {
+            await supabase.storage.from('pdfs').remove([pdfPath]);
+          }
+
+          if (pdf.thumbnailUrl) {
+            const thumbUrl = new URL(pdf.thumbnailUrl);
+            const thumbPath = thumbUrl.pathname.split('/storage/v1/object/public/thumbnails/')[1];
+            if (thumbPath) {
+              await supabase.storage.from('thumbnails').remove([thumbPath]);
+            }
+          }
+        } catch (e) {
+          console.error('Error deleting from storage:', e);
+        }
+      }
+
+      // Remove from localStorage
+      const filtered = pdfs.filter(p => p.id !== pdfId);
       localStorage.setItem(PDFS_KEY, JSON.stringify(filtered));
     }
   },
