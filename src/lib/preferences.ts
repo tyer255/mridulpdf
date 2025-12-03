@@ -7,7 +7,6 @@ const DEFAULT_PREFS: AppPreferences = {
   soundEnabled: true,
   voiceEnabled: false,
   voiceType: 'female',
-  autoQR: true,
 };
 
 export const getAppPreferences = (): AppPreferences => {

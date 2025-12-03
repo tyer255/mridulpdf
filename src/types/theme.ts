@@ -7,7 +7,6 @@ export interface AppPreferences {
   soundEnabled: boolean;
   voiceEnabled: boolean;
   voiceType: VoiceType;
-  autoQR: boolean;
 }
 
 export const THEMES = {

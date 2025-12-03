@@ -4,12 +4,12 @@ import { mockStorage } from '@/lib/mockStorage';
 import { PDFDocument, PDFTag } from '@/types/pdf';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, FileText, Clock, RefreshCw, Trash2, QrCode } from 'lucide-react';
+import { Download, FileText, Clock, RefreshCw, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import SearchBar from '@/components/SearchBar';
 import { Badge } from '@/components/ui/badge';
 import Header from '@/components/Header';
-import { QRShareModal } from '@/components/QRShareModal';
+
 import { alertEvent } from '@/lib/preferences';
 import {
   AlertDialog,
@@ -28,7 +28,6 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [qrModalOpen, setQrModalOpen] = useState(false);
   const [selectedPDF, setSelectedPDF] = useState<PDFDocument | null>(null);
   const { toast } = useToast();
   const location = useLocation();
@@ -120,26 +119,6 @@ const Home = () => {
     }
   };
 
-  const handleShareQR = async (pdf: PDFDocument) => {
-    try {
-      // For world PDFs, fetch download URL if not already present
-      let pdfToShare = pdf;
-      if (pdf.visibility === 'world' && !pdf.downloadUrl) {
-        const downloadUrl = await mockStorage.getPDFDownloadUrl(pdf.id);
-        pdfToShare = { ...pdf, downloadUrl };
-      }
-      
-      setSelectedPDF(pdfToShare);
-      setQrModalOpen(true);
-    } catch (error) {
-      console.error('Error preparing QR share:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load PDF for sharing",
-        variant: "destructive"
-      });
-    }
-  };
 
   const handleDelete = async (pdfId: string) => {
     try {
@@ -250,15 +229,6 @@ const Home = () => {
                       <div className="flex gap-1 ml-2 flex-shrink-0">
                         <Button
                           size="icon"
-                          variant="outline"
-                          onClick={() => handleShareQR(pdf)}
-                          title="Share via QR"
-                          className="text-foreground hover:text-foreground"
-                        >
-                          <QrCode className="w-4 h-4 text-foreground" />
-                        </Button>
-                        <Button
-                          size="icon"
                           variant="default"
                           onClick={() => handleDownload(pdf)}
                           className="text-primary-foreground"
@@ -285,25 +255,7 @@ const Home = () => {
         )}
       </div>
       
-      {/* QR Share Modal */}
-      {selectedPDF && (
-        <QRShareModal
-          open={qrModalOpen}
-          onOpenChange={setQrModalOpen}
-          pdfUrl={selectedPDF.downloadUrl}
-          fileName={selectedPDF.name}
-        />
-      )}
-
       {/* Delete Confirmation Dialog */}
-      {selectedPDF && (
-        <QRShareModal
-          open={qrModalOpen}
-          onOpenChange={setQrModalOpen}
-          pdfUrl={selectedPDF.downloadUrl || ''}
-          fileName={selectedPDF.name || ''}
-        />
-      )}
 
       <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
