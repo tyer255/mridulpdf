@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ArrowLeft, Palette, Volume2, Mic, QrCode, Check } from 'lucide-react';
+import { ArrowLeft, Palette, Volume2, Mic, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getAppPreferences, saveAppPreferences, applyTheme, playSound, speakAlert } from '@/lib/preferences';
 import { THEMES, ThemeType, VoiceType } from '@/types/theme';
@@ -58,12 +58,6 @@ const AppearanceSettings = () => {
     toast.success(`Voice type: ${voiceType}`);
   };
 
-  const handleAutoQRToggle = () => {
-    const newPrefs = { ...prefs, autoQR: !prefs.autoQR };
-    setPrefs(newPrefs);
-    saveAppPreferences(newPrefs);
-    toast.success(newPrefs.autoQR ? 'Auto QR enabled' : 'Auto QR disabled');
-  };
 
   const testVoice = () => {
     speakAlert('This is a test voice alert. Your settings are working perfectly.');
@@ -190,26 +184,6 @@ const AppearanceSettings = () => {
             )}
           </Card>
 
-          {/* QR Settings */}
-          <Card className="p-6 space-y-4">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-secondary to-accent flex items-center justify-center">
-                <QrCode className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold">QR Code Settings</h2>
-                <p className="text-sm text-muted-foreground">Sharing preferences</p>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between py-3">
-              <div>
-                <Label className="text-base font-medium text-foreground">Auto-generate QR</Label>
-                <p className="text-sm text-muted-foreground">Create QR codes for world uploads</p>
-              </div>
-              <Switch checked={prefs.autoQR} onCheckedChange={handleAutoQRToggle} />
-            </div>
-          </Card>
         </div>
       </div>
     </div>
