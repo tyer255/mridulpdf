@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
-import { Camera, Upload } from 'lucide-react';
+import { Camera, Upload, ScanText } from 'lucide-react';
 
 const AddPDF = () => {
   const navigate = useNavigate();
@@ -39,6 +39,23 @@ const AddPDF = () => {
               <h2 className="text-xl font-semibold mb-2">Import PDF</h2>
               <p className="text-muted-foreground text-sm">
                 Select an existing PDF from your device storage
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card 
+          className="p-6 cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
+          onClick={() => navigate('/ocr')}
+        >
+          <div className="flex flex-col items-center text-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+              <ScanText className="w-8 h-8 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold mb-2">Handwriting to Text</h2>
+              <p className="text-muted-foreground text-sm">
+                Convert handwriting into editable text
               </p>
             </div>
           </div>
