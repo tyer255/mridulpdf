@@ -9,6 +9,7 @@ import AddPDF from "./pages/AddPDF";
 import Library from "./pages/Library";
 import CapturePDF from "./pages/CapturePDF";
 import ImportPDF from "./pages/ImportPDF";
+import HandwritingOCR from "./pages/HandwritingOCR";
 import Login from "./pages/Login";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
@@ -55,6 +56,7 @@ const App = () => {
             <Route path="/library" element={<Library />} />
             <Route path="/capture" element={<CapturePDF />} />
             <Route path="/import" element={<ImportPDF />} />
+            <Route path="/ocr" element={<HandwritingOCR />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/notifications" element={<NotificationSettings />} />
             <Route path="/appearance" element={<AppearanceSettings />} />
