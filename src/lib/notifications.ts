@@ -61,10 +61,10 @@ export const registerServiceWorker = async (): Promise<ServiceWorkerRegistration
 export const showNativeNotification = (userName: string, fileName: string, fileId: string) => {
   if (Notification.permission === 'granted' && 'serviceWorker' in navigator) {
     navigator.serviceWorker.ready.then((registration) => {
-      registration.showNotification('✨ New Upload on World!', {
-        body: `${userName} just uploaded 📄 '${fileName}'\nTap to view now 🚀`,
-        icon: '/favicon.ico',
-        badge: '/favicon.ico',
+      registration.showNotification('New Upload on World!', {
+        body: `${userName} just uploaded "${fileName}"\nTap to view now`,
+        icon: '/mridulpdf_logo.png',
+        badge: '/mridulpdf_logo.png',
         tag: `world-upload-${fileId}`,
         requireInteraction: false,
         data: { fileId, url: '/' },
