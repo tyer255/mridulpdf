@@ -39,11 +39,11 @@ self.addEventListener('push', (event) => {
   console.log('Push received:', event);
   
   const data = event.data?.json() || {};
-  const title = data.title || '✨ New Upload on World!';
+  const title = data.title || 'New Upload on World!';
   const options = {
     body: data.body || 'A new PDF has been uploaded',
-    icon: '/favicon.ico',
-    badge: '/favicon.ico',
+    icon: '/mridulpdf_logo.png',
+    badge: '/mridulpdf_logo.png',
     vibrate: [200, 100, 200],
     tag: data.tag || 'world-upload',
     requireInteraction: false,
