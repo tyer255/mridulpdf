@@ -20,6 +20,14 @@ interface ExtractedPage {
   text: string;
 }
 
+interface ScanStatus {
+  currentPage: number;
+  totalPages: number;
+  progress: number;
+  message: string;
+  isProcessing: boolean;
+}
+
 const HandwritingOCR = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -27,17 +35,24 @@ const HandwritingOCR = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const scanAbortRef = useRef(false);
 
   const [step, setStep] = useState<OCRStep>('capture');
   const [images, setImages] = useState<string[]>([]);
   const [extractedPages, setExtractedPages] = useState<ExtractedPage[]>([]);
-  const [currentScanIndex, setCurrentScanIndex] = useState(0);
-  const [scanProgress, setProgress] = useState(0);
+  const [scanStatus, setScanStatus] = useState<ScanStatus>({
+    currentPage: 1,
+    totalPages: 0,
+    progress: 0,
+    message: 'Preparing scan...',
+    isProcessing: false
+  });
   const [cameraActive, setCameraActive] = useState(false);
   const [visibility, setVisibility] = useState<'private' | 'world'>('private');
   const [selectedTags, setSelectedTags] = useState<PDFTag[]>([]);
   const [showTagSelector, setShowTagSelector] = useState(false);
   const [isCreatingPDF, setIsCreatingPDF] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   // Voice announcement
   const speak = useCallback((text: string) => {
@@ -109,20 +124,75 @@ const HandwritingOCR = () => {
     });
   };
 
-  // Process OCR with Lovable AI
-  const processOCR = async (imageUrl: string): Promise<string> => {
+  // Process OCR with Lovable AI - returns progress updates
+  const processOCR = async (
+    imageUrl: string, 
+    onProgress: (progress: number, message: string) => void
+  ): Promise<{ success: boolean; text: string }> => {
     try {
+      // Phase 1: Preparing (0-15%)
+      onProgress(0, 'Preparing image...');
+      await new Promise(r => setTimeout(r, 200));
+      onProgress(8, 'Analyzing content...');
+      await new Promise(r => setTimeout(r, 300));
+      onProgress(15, 'Detecting handwriting...');
+
+      // Phase 2: OCR Processing (15-70%)
+      onProgress(20, 'Extracting text...');
+      
       const { data, error } = await supabase.functions.invoke('ocr-handwriting', {
         body: { image: imageUrl }
       });
 
       if (error) throw error;
-      return data.text || '';
+
+      // Phase 3: Post-processing (70-100%)
+      onProgress(72, 'Interpreting layout...');
+      await new Promise(r => setTimeout(r, 200));
+      onProgress(85, 'Formatting content...');
+      await new Promise(r => setTimeout(r, 200));
+      onProgress(95, 'Finalizing...');
+      await new Promise(r => setTimeout(r, 150));
+      onProgress(100, 'Complete');
+
+      return { success: true, text: data.text || '' };
     } catch (error) {
       console.error('OCR Error:', error);
-      return 'Error processing image. Please try again.';
+      return { success: false, text: '' };
     }
   };
+
+  // Smooth progress animation
+  const animateProgress = useCallback((
+    from: number, 
+    to: number, 
+    duration: number,
+    onUpdate: (value: number) => void
+  ): Promise<void> => {
+    return new Promise(resolve => {
+      const startTime = performance.now();
+      const diff = to - from;
+      
+      const animate = (currentTime: number) => {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // Ease-out cubic for smooth deceleration
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const currentValue = Math.round(from + diff * eased);
+        
+        onUpdate(currentValue);
+        
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          resolve();
+        }
+      };
+      
+      requestAnimationFrame(animate);
+    });
+  }, []);
 
   // Start scanning process
   const startScanning = async () => {
@@ -132,37 +202,100 @@ const HandwritingOCR = () => {
     }
 
     stopCamera();
+    scanAbortRef.current = false;
     setStep('scanning');
-    setCurrentScanIndex(0);
-    setProgress(0);
     setExtractedPages([]);
+    setScanStatus({
+      currentPage: 1,
+      totalPages: images.length,
+      progress: 0,
+      message: 'Starting scan...',
+      isProcessing: true
+    });
 
     speak("Starting scan");
-
+    const results: ExtractedPage[] = [];
+    
     for (let i = 0; i < images.length; i++) {
-      setCurrentScanIndex(i);
+      if (scanAbortRef.current) break;
+
+      const pageNum = i + 1;
+      setIsTransitioning(false);
       
-      // Animate progress
-      for (let p = 0; p <= 100; p += 2) {
-        await new Promise(r => setTimeout(r, 30));
-        setProgress(p);
-        
-        // Announce progress at intervals
-        if (p === 25 || p === 50 || p === 75) {
-          speak(`${p} percent`);
+      // Reset for new page
+      setScanStatus(prev => ({
+        ...prev,
+        currentPage: pageNum,
+        progress: 0,
+        message: `Scanning Page ${pageNum}...`,
+        isProcessing: true
+      }));
+
+      let lastProgress = 0;
+      
+      // Process with progress updates
+      const result = await processOCR(images[i], async (progress, message) => {
+        // Animate smoothly between progress points
+        await animateProgress(lastProgress, progress, 150, (val) => {
+          setScanStatus(prev => ({
+            ...prev,
+            progress: val,
+            message: message
+          }));
+        });
+        lastProgress = progress;
+
+        // Voice announcements at key points
+        if (progress === 25 || progress === 50 || progress === 75) {
+          speak(`${progress} percent`);
         }
+      });
+
+      if (result.success) {
+        results.push({ imageUrl: images[i], text: result.text });
+        speak(`Page ${pageNum} done${i < images.length - 1 ? `. Scanning Page ${pageNum + 1}` : ''}`);
+        
+        // Show completion message
+        setScanStatus(prev => ({
+          ...prev,
+          progress: 100,
+          message: `Page ${pageNum} completed.${i < images.length - 1 ? ` Scanning Page ${pageNum + 1}...` : ''}`
+        }));
+      } else {
+        // Handle failed page
+        speak(`Skipped Page ${pageNum} due to unreadable content`);
+        setScanStatus(prev => ({
+          ...prev,
+          progress: 100,
+          message: `Skipped Page ${pageNum} due to unreadable content.`
+        }));
+        toast({ 
+          title: "Page Skipped", 
+          description: `Page ${pageNum} could not be read`,
+          variant: "destructive"
+        });
       }
 
-      // Process OCR
-      const text = await processOCR(images[i]);
-      setExtractedPages(prev => [...prev, { imageUrl: images[i], text }]);
-      
-      speak("Scan complete");
-      await new Promise(r => setTimeout(r, 500));
+      // Transition to next page
+      if (i < images.length - 1) {
+        setIsTransitioning(true);
+        await new Promise(r => setTimeout(r, 600));
+      }
     }
 
-    setStep('results');
+    setExtractedPages(results);
+    
+    // Final message
+    setScanStatus(prev => ({
+      ...prev,
+      progress: 100,
+      message: 'All pages scanned successfully.',
+      isProcessing: false
+    }));
+    
     speak("All pages scanned successfully");
+    await new Promise(r => setTimeout(r, 800));
+    setStep('results');
   };
 
   // Create PDF from extracted text
@@ -355,43 +488,83 @@ const HandwritingOCR = () => {
         </div>
       )}
 
-      {/* Scanning Step */}
+      {/* Scanning Step - Full screen with scroll support */}
       {step === 'scanning' && (
-        <div className="fixed inset-0 bg-background z-50 flex flex-col">
-          {/* Scanning Animation */}
-          <div className="flex-1 relative overflow-hidden">
-            {/* Current image being scanned */}
-            <img 
-              src={images[currentScanIndex]} 
-              alt="Scanning"
-              className="w-full h-full object-contain"
-            />
+        <div className="fixed inset-0 bg-background z-50 overflow-y-auto">
+          <div className="min-h-full flex flex-col">
+            {/* Scanning Animation Container */}
+            <div className={`flex-1 relative overflow-hidden transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
+              {/* Current image being scanned */}
+              <div className="relative w-full h-full min-h-[50vh]">
+                <img 
+                  src={images[scanStatus.currentPage - 1]} 
+                  alt="Scanning"
+                  className="w-full h-full object-contain"
+                />
+                
+                {/* Neon scan line - continuous loop animation */}
+                {scanStatus.isProcessing && scanStatus.progress < 100 && (
+                  <div 
+                    className="absolute left-0 right-0 h-1 pointer-events-none animate-scan-line"
+                    style={{
+                      background: 'linear-gradient(90deg, transparent 0%, hsl(var(--primary)) 20%, hsl(var(--primary)) 80%, transparent 100%)',
+                      boxShadow: '0 0 20px hsl(var(--primary) / 0.8), 0 0 40px hsl(var(--primary) / 0.4)',
+                    }}
+                  />
+                )}
+                
+                {/* Overlay gradient */}
+                <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-background/30 pointer-events-none" />
+              </div>
+            </div>
             
-            {/* Neon scan line */}
-            <div 
-              className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary to-transparent shadow-[0_0_20px_rgba(59,130,246,0.8)]"
-              style={{
-                bottom: `${scanProgress}%`,
-                transition: 'bottom 0.03s linear'
-              }}
-            />
-            
-            {/* Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-background/50" />
-            
-            {/* Progress display */}
-            <div className="absolute bottom-0 left-0 right-0 p-6 space-y-4">
-              <div className="flex items-center justify-between text-foreground">
-                <span className="text-lg font-medium">
-                  Scanning page {currentScanIndex + 1} of {images.length}
-                </span>
-                <span className="text-4xl font-bold text-primary drop-shadow-[0_0_10px_rgba(59,130,246,0.5)]">
-                  {scanProgress}%
+            {/* Progress display - always visible and scrollable */}
+            <div className="sticky bottom-0 bg-background/95 backdrop-blur-lg border-t border-border p-4 sm:p-6 space-y-4">
+              {/* Page indicator */}
+              <div className="flex items-center justify-center">
+                <span className="px-3 py-1 bg-primary/20 text-primary rounded-full text-sm font-medium">
+                  Page {scanStatus.currentPage} of {scanStatus.totalPages}
                 </span>
               </div>
-              <Progress value={scanProgress} className="h-2" />
+              
+              {/* Progress percentage - responsive text */}
+              <div className="flex items-center justify-center">
+                <span 
+                  className="text-5xl sm:text-6xl md:text-7xl font-bold text-primary transition-all duration-150"
+                  style={{
+                    textShadow: '0 0 20px hsl(var(--primary) / 0.5), 0 0 40px hsl(var(--primary) / 0.3)'
+                  }}
+                >
+                  {scanStatus.progress}%
+                </span>
+              </div>
+              
+              {/* Status message - wraps on small screens */}
+              <p className="text-center text-sm sm:text-base text-muted-foreground break-words px-2">
+                {scanStatus.message}
+              </p>
+              
+              {/* Progress bar */}
+              <Progress value={scanStatus.progress} className="h-2 sm:h-3" />
             </div>
           </div>
+          
+          {/* CSS for scan line animation */}
+          <style>{`
+            @keyframes scanLine {
+              0% {
+                top: 0%;
+              }
+              100% {
+                top: 100%;
+              }
+            }
+            .animate-scan-line {
+              animation: scanLine 1.5s ease-in-out infinite;
+              will-change: top;
+              transform: translateZ(0);
+            }
+          `}</style>
         </div>
       )}
 
