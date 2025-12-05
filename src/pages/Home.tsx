@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { mockStorage } from '@/lib/mockStorage';
 import { PDFDocument, PDFTag } from '@/types/pdf';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, FileText, Clock, RefreshCw, Trash2 } from 'lucide-react';
+import { Download, FileText, Clock, RefreshCw, Trash2, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import SearchBar from '@/components/SearchBar';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +31,7 @@ const Home = () => {
   const [selectedPDF, setSelectedPDF] = useState<PDFDocument | null>(null);
   const { toast } = useToast();
   const location = useLocation();
+  const navigate = useNavigate();
   const currentUserId = localStorage.getItem('anonymous_user_id');
 
   useEffect(() => {
@@ -114,6 +115,23 @@ const Home = () => {
       toast({
         title: "Error",
         description: "Failed to download PDF",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleView = async (pdf: PDFDocument) => {
+    try {
+      let downloadUrl = pdf.downloadUrl;
+      if (pdf.visibility === 'world' && !downloadUrl) {
+        downloadUrl = await mockStorage.getPDFDownloadUrl(pdf.id);
+      }
+      navigate(`/view-pdf?url=${encodeURIComponent(downloadUrl)}&name=${encodeURIComponent(pdf.name)}`);
+    } catch (error) {
+      console.error('View error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to open PDF",
         variant: "destructive"
       });
     }
@@ -227,6 +245,13 @@ const Home = () => {
                         )}
                       </div>
                       <div className="flex gap-1 ml-2 flex-shrink-0">
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          onClick={() => handleView(pdf)}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
                         <Button
                           size="icon"
                           variant="default"
