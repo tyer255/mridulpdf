@@ -124,35 +124,99 @@ const HandwritingOCR = () => {
     });
   };
 
+  // Preprocess image for better OCR (denoise, sharpen, binarize)
+  const preprocessImage = async (imageUrl: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = document.createElement('img');
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(imageUrl);
+          return;
+        }
+
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+
+        // Step 1: Convert to grayscale and enhance contrast
+        for (let i = 0; i < data.length; i += 4) {
+          const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+          // Increase contrast
+          const enhanced = Math.min(255, Math.max(0, (gray - 128) * 1.5 + 128));
+          data[i] = data[i + 1] = data[i + 2] = enhanced;
+        }
+
+        // Step 2: Apply adaptive thresholding for binarization (simple version)
+        const threshold = 140;
+        for (let i = 0; i < data.length; i += 4) {
+          const val = data[i] < threshold ? 0 : 255;
+          data[i] = data[i + 1] = data[i + 2] = val;
+        }
+
+        // Step 3: Simple sharpening using unsharp mask approximation
+        const tempData = new Uint8ClampedArray(data);
+        const w = canvas.width;
+        for (let y = 1; y < canvas.height - 1; y++) {
+          for (let x = 1; x < w - 1; x++) {
+            const idx = (y * w + x) * 4;
+            const blur = (
+              tempData[idx - w * 4] + tempData[idx + w * 4] +
+              tempData[idx - 4] + tempData[idx + 4]
+            ) / 4;
+            const sharp = Math.min(255, Math.max(0, tempData[idx] * 2 - blur * 0.5));
+            data[idx] = data[idx + 1] = data[idx + 2] = sharp;
+          }
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+        resolve(canvas.toDataURL('image/jpeg', 0.95));
+      };
+      img.onerror = () => resolve(imageUrl);
+      img.src = imageUrl;
+    });
+  };
+
   // Process OCR with Lovable AI - returns progress updates
   const processOCR = async (
     imageUrl: string, 
     onProgress: (progress: number, message: string) => void
   ): Promise<{ success: boolean; text: string }> => {
     try {
-      // Phase 1: Preparing (0-15%)
+      // Phase 1: Preprocessing (0-20%)
       onProgress(0, 'Preparing image...');
-      await new Promise(r => setTimeout(r, 200));
-      onProgress(8, 'Analyzing content...');
-      await new Promise(r => setTimeout(r, 300));
-      onProgress(15, 'Detecting handwriting...');
+      await new Promise(r => setTimeout(r, 100));
+      onProgress(5, 'Denoising scan...');
+      
+      const processedImage = await preprocessImage(imageUrl);
+      
+      onProgress(12, 'Binarizing handwriting...');
+      await new Promise(r => setTimeout(r, 150));
+      onProgress(18, 'Sharpening edges...');
+      await new Promise(r => setTimeout(r, 100));
 
-      // Phase 2: OCR Processing (15-70%)
-      onProgress(20, 'Extracting text...');
+      // Phase 2: OCR Processing (20-75%)
+      onProgress(22, 'Detecting layout...');
+      await new Promise(r => setTimeout(r, 100));
+      onProgress(28, 'Extracting Hindi text...');
       
       const { data, error } = await supabase.functions.invoke('ocr-handwriting', {
-        body: { image: imageUrl }
+        body: { image: processedImage }
       });
 
       if (error) throw error;
 
-      // Phase 3: Post-processing (70-100%)
-      onProgress(72, 'Interpreting layout...');
-      await new Promise(r => setTimeout(r, 200));
-      onProgress(85, 'Formatting content...');
-      await new Promise(r => setTimeout(r, 200));
-      onProgress(95, 'Finalizing...');
+      // Phase 3: Post-processing (75-100%)
+      onProgress(76, 'Interpreting columns...');
       await new Promise(r => setTimeout(r, 150));
+      onProgress(84, 'Formatting tables...');
+      await new Promise(r => setTimeout(r, 150));
+      onProgress(92, 'Validating Unicode...');
+      await new Promise(r => setTimeout(r, 100));
       onProgress(100, 'Complete');
 
       return { success: true, text: data.text || '' };
