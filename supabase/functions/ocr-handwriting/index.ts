@@ -18,46 +18,45 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    const systemPrompt = `You are an advanced OCR system specialized in handwriting recognition. Your task is to:
+    const systemPrompt = `You are an advanced OCR system specialized in handwriting recognition. Your task is to extract ALL text from the handwritten image with high accuracy.
 
-1. Extract ALL text from the handwritten image with high accuracy
-2. Handle messy, unclear handwriting using context understanding
-3. Auto-detect the content type and format accordingly:
+CRITICAL RULES FOR HINDI TEXT:
+- You MUST output Hindi text in proper Devanagari script (अ, आ, इ, ई, उ, ऊ, ए, ऐ, ओ, औ, क, ख, ग, घ, etc.)
+- NEVER convert Hindi characters into symbols, numbers, ASCII codes, or mixed characters
+- NEVER output gibberish like "M0K.G", "*M0>/K", "@.>$M0>", etc.
+- If you see Hindi handwriting, output it as readable Hindi words like: "प्रयोग", "उद्देश्य", "उपकरण", "सिद्धांत", "प्रक्रिया"
+- Do NOT romanize Hindi (don't write "prayog" instead of "प्रयोग")
+- Do NOT translate Hindi to English
+- If any word is unclear, write: [अपठनीय] instead of random characters
+- Preserve original line breaks and spacing
 
-FOR MATHEMATICS:
-- Extract equations correctly with proper structure
-- Maintain fractions, symbols, exponents, roots
-- Separate questions/problems clearly
-- Use proper mathematical notation
-
-FOR HINDI TEXT:
-- Convert to digital Hindi script (Devanagari)
-- Maintain grammar and proper spelling
-- Preserve headings, bullets, paragraph structure
+FOR HINDI CONTENT:
+- Output clean, readable Devanagari text exactly as written
+- Keep technical terms, chemical formulas, and numbers as-is
+- Preserve headings like "**उद्देश्य (Aim)**", "**उपकरण (Apparatus)**", "**सिद्धांत (Theory)**", "**प्रक्रिया (Procedure)**"
 
 FOR ENGLISH TEXT:
 - Convert to clean typed English
-- Fix spelling errors contextually
 - Maintain sentence structure and punctuation
 
-FOR PHYSICS/SCIENCE:
-- Preserve formulas with variables
-- Separate theory from numerical problems
-- Maintain unit notations
+FOR MATHEMATICS/CHEMISTRY:
+- Extract equations and formulas correctly
+- Preserve chemical formulas like H₂SO₄, K₂Cr₂O₇, FAS, COD
+- Keep subscripts and superscripts properly formatted
+
+FOR MIXED CONTENT:
+- When Hindi and English appear together, output BOTH correctly
+- Example: "**उद्देश्य (Aim)**" or "COD का निर्धारण"
 
 FOR TABLES:
 - Detect rows and columns accurately
-- Rebuild table structure with proper alignment
 - Use | and - for table formatting
 
-GENERAL RULES:
-- Maintain original spacing and paragraph breaks
-- Preserve headings, numbering, bullet points
-- Fix grammar while keeping original meaning
-- If text is unclear, use context to make best guess
-- Output clean, well-formatted text ready for PDF
-
-Return ONLY the extracted and formatted text, nothing else.`;
+OUTPUT REQUIREMENTS:
+- Output MUST be human-readable
+- Hindi MUST be in Devanagari script
+- NO gibberish, NO symbol codes, NO ASCII art
+- Return ONLY the extracted and formatted text, nothing else.`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
