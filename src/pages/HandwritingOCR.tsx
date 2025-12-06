@@ -362,7 +362,35 @@ const HandwritingOCR = () => {
     setStep('results');
   };
 
-  // Create PDF from extracted text
+  // Load Noto Sans Devanagari font for Hindi support
+  const loadHindiFont = async (pdf: jsPDF): Promise<boolean> => {
+    try {
+      // Fetch Noto Sans Devanagari font from Google Fonts CDN
+      const fontUrl = 'https://fonts.gstatic.com/s/notosansdevanagari/v26/TuGoUUFzXI5FBtUq5a8bjKYTZjtRU6Sgv3NaV_SNmI0b8QQCQmHn6B2OHjbL_08.ttf';
+      const response = await fetch(fontUrl);
+      
+      if (!response.ok) {
+        console.warn('Could not load Hindi font, using fallback');
+        return false;
+      }
+      
+      const fontBuffer = await response.arrayBuffer();
+      const fontBase64 = btoa(
+        new Uint8Array(fontBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+      );
+      
+      // Add font to jsPDF
+      pdf.addFileToVFS('NotoSansDevanagari-Regular.ttf', fontBase64);
+      pdf.addFont('NotoSansDevanagari-Regular.ttf', 'NotoSansDevanagari', 'normal');
+      
+      return true;
+    } catch (error) {
+      console.warn('Failed to load Hindi font:', error);
+      return false;
+    }
+  };
+
+  // Create PDF from extracted text with UTF-8 Hindi support
   const createPDF = async () => {
     if (extractedPages.length === 0) return;
     
@@ -376,21 +404,62 @@ const HandwritingOCR = () => {
       const lineHeight = 7;
       const maxWidth = pageWidth - margin * 2;
 
+      // Load and embed Hindi Unicode font
+      const hindiLoaded = await loadHindiFont(pdf);
+      
       extractedPages.forEach((page, index) => {
         if (index > 0) pdf.addPage();
         
         pdf.setFontSize(11);
-        pdf.setFont('helvetica', 'normal');
         
-        const lines = pdf.splitTextToSize(page.text, maxWidth);
+        // Use Hindi font if loaded, otherwise fallback
+        if (hindiLoaded) {
+          pdf.setFont('NotoSansDevanagari', 'normal');
+        } else {
+          pdf.setFont('helvetica', 'normal');
+        }
+        
+        // Split text preserving UTF-8 characters
+        const text = page.text;
+        const lines: string[] = [];
+        let currentLine = '';
+        
+        // Word-by-word splitting for proper Unicode handling
+        const words = text.split(/(\s+)/);
+        
+        for (const word of words) {
+          const testLine = currentLine + word;
+          const testWidth = pdf.getTextWidth(testLine);
+          
+          if (testWidth > maxWidth && currentLine.length > 0) {
+            lines.push(currentLine.trim());
+            currentLine = word;
+          } else {
+            currentLine = testLine;
+          }
+        }
+        
+        if (currentLine.trim()) {
+          lines.push(currentLine.trim());
+        }
+        
         let y = margin;
         
         lines.forEach((line: string) => {
           if (y > pageHeight - margin) {
             pdf.addPage();
             y = margin;
+            
+            // Re-apply font on new page
+            if (hindiLoaded) {
+              pdf.setFont('NotoSansDevanagari', 'normal');
+            }
           }
-          pdf.text(line, margin, y);
+          
+          // Write text with UTF-8 encoding
+          pdf.text(line, margin, y, { 
+            isInputRtl: false
+          });
           y += lineHeight;
         });
       });
