@@ -100,7 +100,8 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ fileUrl, fileName = 'Document', o
     }
   };
 
-  const pageWidth = containerWidth > 0 ? Math.min(containerWidth, 800) : 350;
+  // Base page width without scale - scale is applied separately by react-pdf
+  const basePageWidth = containerWidth > 0 ? Math.min(containerWidth, 600) : 350;
 
   return (
     <div 
@@ -111,28 +112,28 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ fileUrl, fileName = 'Document', o
     >
       {/* Header */}
       <div className={cn(
-        "flex items-center justify-between p-3 border-b",
+        "flex items-center justify-between p-2 border-b gap-1",
         isDarkMode ? "bg-gray-800 border-gray-700" : "bg-card border-border"
       )}>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 min-w-0 flex-shrink">
           {onClose && (
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="h-5 w-5" />
+            <Button variant="ghost" size="icon" className="flex-shrink-0 h-8 w-8" onClick={onClose}>
+              <X className="h-4 w-4" />
             </Button>
           )}
           <span className={cn(
-            "text-sm font-medium truncate max-w-[150px]",
+            "text-xs font-medium truncate max-w-[100px] sm:max-w-[150px]",
             isDarkMode ? "text-white" : "text-foreground"
           )}>
             {fileName}
           </span>
         </div>
         
-        <div className="flex items-center gap-1">
+        <div className="flex items-center flex-shrink-0">
           {/* Thumbnails */}
           <Sheet open={showThumbnails} onOpenChange={setShowThumbnails}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="h-8 w-8">
                 <Columns className="h-4 w-4" />
               </Button>
             </SheetTrigger>
@@ -181,13 +182,14 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ fileUrl, fileName = 'Document', o
           <Button 
             variant="ghost" 
             size="icon"
+            className="h-8 w-8"
             onClick={() => setShowSearch(!showSearch)}
           >
             <Search className="h-4 w-4" />
           </Button>
 
           {/* Copy */}
-          <Button variant="ghost" size="icon" onClick={handleCopyText}>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCopyText}>
             {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
           </Button>
 
@@ -195,6 +197,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ fileUrl, fileName = 'Document', o
           <Button 
             variant="ghost" 
             size="icon"
+            className="h-8 w-8"
             onClick={() => setIsDarkMode(!isDarkMode)}
           >
             {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -260,7 +263,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ fileUrl, fileName = 'Document', o
               <Page
                 pageNumber={i + 1}
                 scale={scale}
-                width={pageWidth}
+                width={basePageWidth}
                 renderTextLayer={true}
                 renderAnnotationLayer={true}
                 className={cn(
