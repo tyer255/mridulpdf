@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { mockStorage } from '@/lib/mockStorage';
 import { PDFDocument } from '@/types/pdf';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileText, Clock, Eye, Trash2, Download } from 'lucide-react';
+import { FileText, Clock, Eye, Trash2 } from 'lucide-react';
 import { useAnonymousUser } from '@/hooks/useAnonymousUser';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
@@ -27,7 +26,6 @@ const Library = () => {
   const [deleteId, setDeleteId] = useState<{ id: string; visibility: 'private' | 'world' } | null>(null);
   const userId = useAnonymousUser();
   const { toast } = useToast();
-  const navigate = useNavigate();
 
   useEffect(() => {
     if (userId) {
@@ -64,23 +62,7 @@ const Library = () => {
 
   const handleView = async (pdf: PDFDocument) => {
     try {
-      let downloadUrl = pdf.downloadUrl;
-      if (pdf.visibility === 'world' && !downloadUrl) {
-        downloadUrl = await mockStorage.getPDFDownloadUrl(pdf.id);
-      }
-      navigate(`/view-pdf?url=${encodeURIComponent(downloadUrl)}&name=${encodeURIComponent(pdf.name)}`);
-    } catch (error) {
-      console.error('View error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to open PDF",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleDownload = async (pdf: PDFDocument) => {
-    try {
+      // For world PDFs, fetch download URL if not already present
       let downloadUrl = pdf.downloadUrl;
       if (pdf.visibility === 'world' && !downloadUrl) {
         downloadUrl = await mockStorage.getPDFDownloadUrl(pdf.id);
@@ -224,17 +206,10 @@ const Library = () => {
                       <div className="flex gap-1 ml-2 flex-shrink-0">
                         <Button
                           size="icon"
-                          variant="outline"
+                          variant="default"
                           onClick={() => handleView(pdf)}
                         >
                           <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="default"
-                          onClick={() => handleDownload(pdf)}
-                        >
-                          <Download className="w-4 h-4" />
                         </Button>
                         <Button
                           size="icon"

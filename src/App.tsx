@@ -15,24 +15,18 @@ import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import NotificationSettings from "./pages/NotificationSettings";
 import AppearanceSettings from "./pages/AppearanceSettings";
-import ViewPDF from "./pages/ViewPDF";
 import BottomNav from "./components/BottomNav";
 import { NotificationPermission } from "./components/NotificationPermission";
 import { WorldUploadNotification } from "./components/WorldUploadNotification";
 import { useNotifications } from "./hooks/useNotifications";
 import { shouldAskPermission } from "./lib/notifications";
 import { applyTheme, getAppPreferences } from "./lib/preferences";
-import { useAppUrlListener } from "./hooks/useAppUrlListener";
 
 const queryClient = new QueryClient();
 
-// Wrapper component to use hooks that need router context
-const AppContent = () => {
+const App = () => {
   const [showPermissionDialog, setShowPermissionDialog] = useState(false);
   const { notification, clearNotification } = useNotifications();
-  
-  // Listen for Android "Open With" intents
-  useAppUrlListener();
 
   useEffect(() => {
     // Apply saved theme on app load
@@ -50,49 +44,40 @@ const AppContent = () => {
   }, []);
 
   return (
-    <>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/" element={<Index />} />
-        <Route path="/add" element={<AddPDF />} />
-        <Route path="/library" element={<Library />} />
-        <Route path="/capture" element={<CapturePDF />} />
-        <Route path="/import" element={<ImportPDF />} />
-        <Route path="/ocr" element={<HandwritingOCR />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/notifications" element={<NotificationSettings />} />
-        <Route path="/appearance" element={<AppearanceSettings />} />
-        <Route path="/view-pdf" element={<ViewPDF />} />
-        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-      <BottomNav />
-      
-      {/* Notification Permission Dialog */}
-      <NotificationPermission 
-        open={showPermissionDialog} 
-        onOpenChange={setShowPermissionDialog} 
-      />
-      
-      {/* World Upload Notification */}
-      {notification && (
-        <WorldUploadNotification 
-          notification={notification} 
-          onClose={clearNotification} 
-        />
-      )}
-    </>
-  );
-};
-
-const App = () => {
-  return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <AppContent />
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<Index />} />
+            <Route path="/add" element={<AddPDF />} />
+            <Route path="/library" element={<Library />} />
+            <Route path="/capture" element={<CapturePDF />} />
+            <Route path="/import" element={<ImportPDF />} />
+            <Route path="/ocr" element={<HandwritingOCR />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/notifications" element={<NotificationSettings />} />
+            <Route path="/appearance" element={<AppearanceSettings />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          <BottomNav />
+          
+          {/* Notification Permission Dialog */}
+          <NotificationPermission 
+            open={showPermissionDialog} 
+            onOpenChange={setShowPermissionDialog} 
+          />
+          
+          {/* World Upload Notification */}
+          {notification && (
+            <WorldUploadNotification 
+              notification={notification} 
+              onClose={clearNotification} 
+            />
+          )}
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
