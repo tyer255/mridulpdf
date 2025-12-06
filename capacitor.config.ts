@@ -23,6 +23,14 @@ const config: CapacitorConfig = {
           {
             scheme: 'file',
             mimeType: 'application/pdf'
+          },
+          {
+            scheme: 'file',
+            pathPattern: '.*\\.pdf'
+          },
+          {
+            scheme: 'content',
+            pathPattern: '.*\\.pdf'
           }
         ],
         categories: [
@@ -32,6 +40,18 @@ const config: CapacitorConfig = {
       },
       {
         action: 'android.intent.action.OPEN_DOCUMENT',
+        autoVerify: false,
+        data: [
+          {
+            mimeType: 'application/pdf'
+          }
+        ],
+        categories: [
+          'android.intent.category.DEFAULT'
+        ]
+      },
+      {
+        action: 'android.intent.action.SEND',
         autoVerify: false,
         data: [
           {
