@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Image, ArrowLeft, Lock, Globe, Tag, FileText } from 'lucide-react';
+import { Camera, Image, ArrowLeft, Lock, Globe, Tag, FileText, Edit } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -53,6 +54,7 @@ const HandwritingOCR = () => {
   const [showTagSelector, setShowTagSelector] = useState(false);
   const [isCreatingPDF, setIsCreatingPDF] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [pdfName, setPdfName] = useState('');
 
   // Voice announcement
   const speak = useCallback((text: string) => {
@@ -362,7 +364,7 @@ const HandwritingOCR = () => {
     setStep('results');
   };
 
-  // Create PDF from extracted text
+  // Create PDF from extracted text - using images with text overlay for Hindi support
   const createPDF = async () => {
     if (extractedPages.length === 0) return;
     
@@ -372,28 +374,78 @@ const HandwritingOCR = () => {
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 15;
-      const lineHeight = 7;
-      const maxWidth = pageWidth - margin * 2;
+      const margin = 10;
+      const contentWidth = pageWidth - margin * 2;
+      const contentHeight = pageHeight - margin * 2;
 
-      extractedPages.forEach((page, index) => {
-        if (index > 0) pdf.addPage();
+      for (let i = 0; i < extractedPages.length; i++) {
+        if (i > 0) pdf.addPage();
         
-        pdf.setFontSize(11);
-        pdf.setFont('helvetica', 'normal');
+        const page = extractedPages[i];
         
-        const lines = pdf.splitTextToSize(page.text, maxWidth);
-        let y = margin;
+        // Create a canvas with the text rendered properly
+        const canvas = document.createElement('canvas');
+        const scale = 3; // High resolution for clarity
+        canvas.width = contentWidth * scale * 3.78; // mm to px at 96dpi * scale
+        canvas.height = contentHeight * scale * 3.78;
+        const ctx = canvas.getContext('2d');
         
-        lines.forEach((line: string) => {
-          if (y > pageHeight - margin) {
-            pdf.addPage();
-            y = margin;
+        if (ctx) {
+          // White background
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          
+          // Setup text rendering with Unicode-compatible font
+          ctx.fillStyle = '#000000';
+          ctx.font = `${16 * scale}px "Noto Sans Devanagari", "Mangal", "Arial Unicode MS", sans-serif`;
+          ctx.textBaseline = 'top';
+          
+          const lineHeight = 24 * scale;
+          const maxWidth = canvas.width - 40 * scale;
+          let y = 20 * scale;
+          
+          // Split text by lines and render
+          const paragraphs = page.text.split('\n');
+          
+          for (const paragraph of paragraphs) {
+            if (paragraph.trim() === '') {
+              y += lineHeight * 0.5;
+              continue;
+            }
+            
+            // Word wrap
+            const words = paragraph.split(' ');
+            let line = '';
+            
+            for (const word of words) {
+              const testLine = line + (line ? ' ' : '') + word;
+              const metrics = ctx.measureText(testLine);
+              
+              if (metrics.width > maxWidth && line) {
+                ctx.fillText(line, 20 * scale, y);
+                line = word;
+                y += lineHeight;
+              } else {
+                line = testLine;
+              }
+            }
+            
+            if (line) {
+              ctx.fillText(line, 20 * scale, y);
+              y += lineHeight;
+            }
           }
-          pdf.text(line, margin, y);
-          y += lineHeight;
-        });
-      });
+          
+          // Add page number
+          ctx.fillStyle = '#666666';
+          ctx.font = `${12 * scale}px Arial`;
+          ctx.fillText(`Page ${i + 1} of ${extractedPages.length}`, canvas.width / 2 - 40 * scale, canvas.height - 20 * scale);
+        }
+        
+        // Add canvas as image to PDF
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        pdf.addImage(imgData, 'JPEG', margin, margin, contentWidth, contentHeight);
+      }
 
       const pdfBlob = pdf.output('blob');
       const pdfDataUrl = await new Promise<string>((resolve) => {
@@ -432,7 +484,7 @@ const HandwritingOCR = () => {
       }
       const thumbnailUrl = thumbnailCanvas.toDataURL('image/jpeg', 0.8);
 
-      const fileName = `OCR_${new Date().toLocaleDateString().replace(/\//g, '-')}_${Date.now()}`;
+      const fileName = pdfName.trim() || `OCR_${new Date().toLocaleDateString().replace(/\//g, '-')}_${Date.now()}`;
       
       await mockStorage.savePDF({
         name: fileName,
@@ -647,6 +699,20 @@ const HandwritingOCR = () => {
               </div>
             ))}
           </Card>
+
+          {/* PDF Name Input */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground flex items-center gap-2">
+              <Edit className="w-4 h-4" />
+              PDF Name
+            </label>
+            <Input
+              value={pdfName}
+              onChange={(e) => setPdfName(e.target.value)}
+              placeholder="Enter PDF name (optional)"
+              className="bg-secondary/50"
+            />
+          </div>
 
           {/* Action Cards */}
           <div className="space-y-3">
