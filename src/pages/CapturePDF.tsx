@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Camera, X, Save, Loader2 } from 'lucide-react';
+import { Camera, X, Save, Loader2, ArrowLeft } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { useAnonymousUser, getUserDisplayName } from '@/hooks/useAnonymousUser';
 import { useToast } from '@/hooks/use-toast';
@@ -19,6 +19,7 @@ import Header from '@/components/Header';
 import ImageFilterModal from '@/components/ImageFilterModal';
 import heic2any from 'heic2any';
 import { alertEvent } from '@/lib/preferences';
+import ExitConfirmDialog from '@/components/ExitConfirmDialog';
 
 const CapturePDF = () => {
   const [images, setImages] = useState<string[]>([]);
@@ -30,11 +31,33 @@ const CapturePDF = () => {
   const [tags, setTags] = useState<PDFTag[]>([]);
   const [addPageNumbers, setAddPageNumbers] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [showExitDialog, setShowExitDialog] = useState(false);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const userId = useAnonymousUser();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const hasUnsavedContent = images.length > 0;
+
+  const handleBackClick = () => {
+    if (hasUnsavedContent) {
+      setShowExitDialog(true);
+    } else {
+      navigate('/add');
+    }
+  };
+
+  const handleSaveDraft = () => {
+    const draft = { images, pdfName, visibility, tags, addPageNumbers, timestamp: Date.now() };
+    localStorage.setItem('capture_draft', JSON.stringify(draft));
+    toast({ title: "Draft saved", description: "Your work has been saved" });
+    setShowExitDialog(false);
+    navigate('/add');
+  };
+
+  const handleResume = () => setShowExitDialog(false);
+  const handleExit = () => { setShowExitDialog(false); navigate('/add'); };
 
   const handleCapture = () => {
     cameraInputRef.current?.click();
@@ -331,7 +354,24 @@ const handleGallerySelection = async (e: React.ChangeEvent<HTMLInputElement>) =>
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <Header />
+      <ExitConfirmDialog
+        open={showExitDialog}
+        onOpenChange={setShowExitDialog}
+        onSaveDraft={handleSaveDraft}
+        onResume={handleResume}
+        onExit={handleExit}
+        hasContent={hasUnsavedContent}
+      />
+
+      {/* Header with back button */}
+      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-lg border-b border-border p-4">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={handleBackClick}>
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <h1 className="text-xl font-bold text-foreground">Capture PDF</h1>
+        </div>
+      </div>
       
       <ImageFilterModal
         image={capturedImageForFilter}
@@ -341,7 +381,6 @@ const handleGallerySelection = async (e: React.ChangeEvent<HTMLInputElement>) =>
       />
 
       <div className="p-6">
-        <h1 className="text-2xl font-bold text-foreground mb-6">Capture PDF</h1>
 
         <div className="space-y-6 max-w-2xl mx-auto">
           {/* Camera Input - Single capture with filter */}

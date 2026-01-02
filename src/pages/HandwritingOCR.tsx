@@ -13,6 +13,8 @@ import { getAppPreferences } from '@/lib/preferences';
 import { jsPDF } from 'jspdf';
 import { supabase } from '@/integrations/supabase/client';
 import { useAnonymousUser } from '@/hooks/useAnonymousUser';
+import ExitConfirmDialog from '@/components/ExitConfirmDialog';
+import CopyButton from '@/components/CopyButton';
 
 type OCRStep = 'capture' | 'scanning' | 'results';
 
@@ -55,6 +57,68 @@ const HandwritingOCR = () => {
   const [isCreatingPDF, setIsCreatingPDF] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [pdfName, setPdfName] = useState('');
+  const [showExitDialog, setShowExitDialog] = useState(false);
+
+  const hasUnsavedContent = images.length > 0 || extractedPages.length > 0;
+
+  const handleBackClick = () => {
+    if (hasUnsavedContent) {
+      setShowExitDialog(true);
+    } else {
+      navigate('/add');
+    }
+  };
+
+  const handleSaveDraft = () => {
+    // Save to local storage as draft
+    const draft = {
+      images,
+      extractedPages,
+      pdfName,
+      visibility,
+      selectedTags,
+      step,
+      timestamp: Date.now(),
+    };
+    localStorage.setItem('ocr_draft', JSON.stringify(draft));
+    toast({ title: "Draft saved", description: "Your work has been saved" });
+    setShowExitDialog(false);
+    navigate('/add');
+  };
+
+  const handleResume = () => {
+    setShowExitDialog(false);
+  };
+
+  const handleExit = () => {
+    setShowExitDialog(false);
+    stopCamera();
+    navigate('/add');
+  };
+
+  // Load draft on mount
+  useEffect(() => {
+    const savedDraft = localStorage.getItem('ocr_draft');
+    if (savedDraft) {
+      try {
+        const draft = JSON.parse(savedDraft);
+        if (Date.now() - draft.timestamp < 24 * 60 * 60 * 1000) { // 24 hours
+          setImages(draft.images || []);
+          setExtractedPages(draft.extractedPages || []);
+          setPdfName(draft.pdfName || '');
+          setVisibility(draft.visibility || 'private');
+          setSelectedTags(draft.selectedTags || []);
+          if (draft.extractedPages?.length > 0) {
+            setStep('results');
+          }
+          toast({ title: "Draft restored", description: "Your previous work has been loaded" });
+        }
+        localStorage.removeItem('ocr_draft');
+      } catch (e) {
+        console.error('Failed to load draft:', e);
+      }
+    }
+  }, []);
 
   // Voice announcement
   const speak = useCallback((text: string) => {
@@ -515,10 +579,19 @@ const HandwritingOCR = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
+      <ExitConfirmDialog
+        open={showExitDialog}
+        onOpenChange={setShowExitDialog}
+        onSaveDraft={handleSaveDraft}
+        onResume={handleResume}
+        onExit={handleExit}
+        hasContent={hasUnsavedContent}
+      />
+
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-lg border-b border-border p-4">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/add')}>
+          <Button variant="ghost" size="icon" onClick={handleBackClick}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <h1 className="text-xl font-bold text-foreground">Handwriting to Text</h1>
@@ -689,10 +762,21 @@ const HandwritingOCR = () => {
         <div className="p-4 space-y-4">
           {/* Extracted text display */}
           <Card className="p-4 max-h-[50vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold mb-3 text-foreground">Extracted Text</h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold text-foreground">Extracted Text</h2>
+              <CopyButton 
+                text={extractedPages.map(p => p.text).join('\n\n--- Page Break ---\n\n')}
+                className="shrink-0"
+              />
+            </div>
             {extractedPages.map((page, index) => (
               <div key={index} className="mb-4 pb-4 border-b border-border last:border-0">
-                <p className="text-sm text-muted-foreground mb-2">Page {index + 1}</p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-muted-foreground">Page {index + 1}</p>
+                  {extractedPages.length > 1 && (
+                    <CopyButton text={page.text} size="icon" variant="ghost" />
+                  )}
+                </div>
                 <p className="text-foreground whitespace-pre-wrap leading-relaxed">
                   {page.text}
                 </p>
