@@ -4,11 +4,12 @@ import { mockStorage } from '@/lib/mockStorage';
 import { PDFDocument, PDFTag } from '@/types/pdf';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, FileText, Clock, RefreshCw, Trash2 } from 'lucide-react';
+import { FileText, Clock, RefreshCw, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import SearchBar from '@/components/SearchBar';
 import { Badge } from '@/components/ui/badge';
 import Header from '@/components/Header';
+import PDFDetailsSheet from '@/components/PDFDetailsSheet';
 
 import { alertEvent } from '@/lib/preferences';
 import {
@@ -188,7 +189,11 @@ const Home = () => {
         ) : (
           <div className="space-y-3">
             {filteredPDFs.map((pdf) => (
-              <Card key={pdf.id} className="p-4 hover:shadow-md transition-shadow">
+              <Card 
+                key={pdf.id} 
+                className="p-4 hover:shadow-md transition-all cursor-pointer active:scale-[0.99]"
+                onClick={() => setSelectedPDF(pdf)}
+              >
                 <div className="flex gap-3">
                    {pdf.thumbnailUrl && (
                     <div className="flex-shrink-0">
@@ -226,26 +231,21 @@ const Home = () => {
                           </div>
                         )}
                       </div>
-                      <div className="flex gap-1 ml-2 flex-shrink-0">
-                        <Button
-                          size="icon"
-                          variant="default"
-                          onClick={() => handleDownload(pdf)}
-                          className="text-primary-foreground"
-                        >
-                          <Download className="w-4 h-4 text-primary-foreground" />
-                        </Button>
-                        {currentUserId === pdf.userId && (
+                      {currentUserId === pdf.userId && (
+                        <div className="flex gap-1 ml-2 flex-shrink-0">
                           <Button
                             size="icon"
                             variant="destructive"
-                            onClick={() => setDeleteId(pdf.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteId(pdf.id);
+                            }}
                             className="text-destructive-foreground"
                           >
                             <Trash2 className="w-4 h-4 text-destructive-foreground" />
                           </Button>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -255,8 +255,16 @@ const Home = () => {
         )}
       </div>
       
-      {/* Delete Confirmation Dialog */}
+      {/* PDF Details Sheet */}
+      <PDFDetailsSheet
+        pdf={selectedPDF}
+        open={selectedPDF !== null}
+        onOpenChange={(open) => !open && setSelectedPDF(null)}
+        onDownload={handleDownload}
+        displayName={(selectedPDF as any)?.displayName}
+      />
 
+      {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
