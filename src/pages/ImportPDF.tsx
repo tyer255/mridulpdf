@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Upload, Loader2, FileText, X } from 'lucide-react';
+import { Upload, Loader2, FileText, X, ArrowLeft } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { useAnonymousUser, getUserDisplayName } from '@/hooks/useAnonymousUser';
 import { useToast } from '@/hooks/use-toast';
@@ -11,8 +11,8 @@ import { mockStorage } from '@/lib/mockStorage';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { PDFTag } from '@/types/pdf';
 import TagSelector from '@/components/TagSelector';
-import Header from '@/components/Header';
 import { alertEvent } from '@/lib/preferences';
+import ExitConfirmDialog from '@/components/ExitConfirmDialog';
 
 const ImportPDF = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -20,10 +20,29 @@ const ImportPDF = () => {
   const [visibility, setVisibility] = useState<'private' | 'world'>('private');
   const [tags, setTags] = useState<PDFTag[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [showExitDialog, setShowExitDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const userId = useAnonymousUser();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const hasUnsavedContent = selectedFile !== null;
+
+  const handleBackClick = () => {
+    if (hasUnsavedContent) {
+      setShowExitDialog(true);
+    } else {
+      navigate('/add');
+    }
+  };
+
+  const handleSaveDraft = () => {
+    toast({ title: "Cannot save PDF as draft", description: "Please upload the PDF or exit" });
+    setShowExitDialog(false);
+  };
+
+  const handleResume = () => setShowExitDialog(false);
+  const handleExit = () => { setShowExitDialog(false); navigate('/add'); };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -129,9 +148,26 @@ const ImportPDF = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <Header />
+      <ExitConfirmDialog
+        open={showExitDialog}
+        onOpenChange={setShowExitDialog}
+        onSaveDraft={handleSaveDraft}
+        onResume={handleResume}
+        onExit={handleExit}
+        hasContent={hasUnsavedContent}
+      />
+
+      {/* Header with back button */}
+      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-lg border-b border-border p-4">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={handleBackClick}>
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <h1 className="text-xl font-bold text-foreground">Import PDF</h1>
+        </div>
+      </div>
+
       <div className="p-6">
-        <h1 className="text-2xl font-bold text-foreground mb-6">Import PDF</h1>
 
         <div className="space-y-6 max-w-2xl mx-auto">
           <input
