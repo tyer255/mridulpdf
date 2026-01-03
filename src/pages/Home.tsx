@@ -10,6 +10,8 @@ import SearchBar from '@/components/SearchBar';
 import { Badge } from '@/components/ui/badge';
 import Header from '@/components/Header';
 import PDFDetailsSheet from '@/components/PDFDetailsSheet';
+import GoogleLoginPrompt from '@/components/GoogleLoginPrompt';
+import { supabase } from '@/integrations/supabase/client';
 
 import { alertEvent } from '@/lib/preferences';
 import {
@@ -30,13 +32,28 @@ const Home = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [selectedPDF, setSelectedPDF] = useState<PDFDocument | null>(null);
+  const [showGooglePrompt, setShowGooglePrompt] = useState(false);
   const { toast } = useToast();
   const location = useLocation();
   const currentUserId = localStorage.getItem('anonymous_user_id');
 
   useEffect(() => {
     loadWorldPDFs();
+    checkAuthAndShowPrompt();
   }, [location.pathname]);
+
+  const checkAuthAndShowPrompt = async () => {
+    // Check if user is logged in with Supabase
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    // If user is a guest (has guest ID but no Supabase session) and hasn't dismissed the prompt
+    if (currentUserId && !session && !sessionStorage.getItem('google_prompt_dismissed')) {
+      // Show prompt after a short delay
+      setTimeout(() => {
+        setShowGooglePrompt(true);
+      }, 1500);
+    }
+  };
 
   const loadWorldPDFs = async (retryCount = 0) => {
     try {
@@ -281,6 +298,12 @@ const Home = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Google Login Prompt */}
+      <GoogleLoginPrompt 
+        open={showGooglePrompt} 
+        onOpenChange={setShowGooglePrompt} 
+      />
     </div>
   );
 };

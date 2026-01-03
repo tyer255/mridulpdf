@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PDFDocument } from '@/types/pdf';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import SharePanel from './SharePanel';
+import { mockStorage } from '@/lib/mockStorage';
 
 interface PDFDetailsSheetProps {
   pdf: PDFDocument | null;
@@ -34,6 +35,25 @@ const PDFDetailsSheet = ({
   displayName 
 }: PDFDetailsSheetProps) => {
   const [showSharePanel, setShowSharePanel] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string>('');
+
+  // Fetch the actual download URL when sheet opens
+  useEffect(() => {
+    const fetchShareUrl = async () => {
+      if (pdf && open) {
+        try {
+          // Get the actual public storage URL for sharing
+          const downloadUrl = pdf.downloadUrl || await mockStorage.getPDFDownloadUrl(pdf.id);
+          setShareUrl(downloadUrl);
+        } catch (error) {
+          console.error('Error fetching share URL:', error);
+          // Fallback to a generic share message
+          setShareUrl(`${window.location.origin}/?search=${encodeURIComponent(pdf.name)}`);
+        }
+      }
+    };
+    fetchShareUrl();
+  }, [pdf, open]);
 
   if (!pdf) return null;
 
@@ -48,10 +68,6 @@ const PDFDetailsSheet = ({
   const handleDownload = () => {
     onDownload(pdf);
     onOpenChange(false);
-  };
-
-  const getShareUrl = () => {
-    return `${window.location.origin}/pdf/${pdf.id}`;
   };
 
   return (
@@ -151,7 +167,7 @@ const PDFDetailsSheet = ({
           <SharePanel 
             open={showSharePanel}
             onOpenChange={setShowSharePanel}
-            shareUrl={getShareUrl()}
+            shareUrl={shareUrl}
             pdfName={pdf.name}
           />
         </div>
