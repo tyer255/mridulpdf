@@ -224,7 +224,7 @@ const Home = () => {
                         {pdf.tags && pdf.tags.length > 0 && (
                           <div className="flex flex-wrap gap-1">
                             {pdf.tags.map(tag => (
-                              <Badge key={tag} variant="secondary" className="text-xs">
+                              <Badge key={tag} variant="tag" className="text-xs">
                                 {tag}
                               </Badge>
                             ))}

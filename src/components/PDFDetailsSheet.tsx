@@ -88,8 +88,8 @@ const PDFDetailsSheet = ({
                 {pdf.tags.map(tag => (
                   <Badge 
                     key={tag} 
-                    variant="secondary" 
-                    className="px-3 py-1.5 text-sm font-medium rounded-full bg-secondary/80 text-secondary-foreground"
+                    variant="tag" 
+                    className="px-3 py-1.5 text-sm font-medium"
                   >
                     {tag}
                   </Badge>
