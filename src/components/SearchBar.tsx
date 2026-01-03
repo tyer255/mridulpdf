@@ -55,12 +55,12 @@ const SearchBar = ({ onSearch }: SearchBarProps) => {
             return (
               <Badge
                 key={tag}
-                variant={isSelected ? 'default' : 'secondary'}
-                className="cursor-pointer hover:bg-primary/80 transition-colors text-xs"
+                variant={isSelected ? 'default' : 'tag'}
+                className="cursor-pointer transition-colors text-xs"
                 onClick={() => toggleTag(tag)}
               >
-                <span className={isSelected ? 'text-primary-foreground' : 'text-foreground'}>{tag}</span>
-                {isSelected && <X className="ml-1 h-3 w-3 text-primary-foreground" />}
+                <span>{tag}</span>
+                {isSelected && <X className="ml-1 h-3 w-3" />}
               </Badge>
             );
           })}
