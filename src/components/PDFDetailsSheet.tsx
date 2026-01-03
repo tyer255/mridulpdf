@@ -8,7 +8,6 @@ import {
   Clock, 
   User, 
   Share2, 
-  X,
   FileStack
 } from 'lucide-react';
 import {
@@ -73,19 +72,11 @@ const PDFDetailsSheet = ({
               <div className="p-3 rounded-xl bg-primary/10">
                 <FileText className="w-8 h-8 text-primary" />
               </div>
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 pr-8">
                 <SheetTitle className="text-xl font-bold text-foreground text-left leading-tight">
                   {pdf.name}
                 </SheetTitle>
               </div>
-              <Button 
-                variant="ghost" 
-                size="icon"
-                className="flex-shrink-0 -mt-1 -mr-2"
-                onClick={() => onOpenChange(false)}
-              >
-                <X className="w-5 h-5 text-muted-foreground" />
-              </Button>
             </div>
           </SheetHeader>
 
