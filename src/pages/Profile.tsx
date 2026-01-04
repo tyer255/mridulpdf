@@ -40,25 +40,24 @@ const Profile = () => {
         // Also update localStorage for consistency
         localStorage.setItem(USER_ID_KEY, session.user.id);
         localStorage.setItem(USER_NAME_KEY, googleName);
-      } else {
-        // Check for guest user
-        const storedUserId = localStorage.getItem(USER_ID_KEY);
-        const storedName = localStorage.getItem(USER_NAME_KEY) || 'Guest User';
-        
-        if (!storedUserId) {
-          navigate('/login');
-          return;
-        }
-
-        setIsGoogleUser(false);
-        setUserId(storedUserId);
-        setDisplayName(storedName);
+        return;
       }
+      
+      // Check for guest user
+      const storedUserId = localStorage.getItem(USER_ID_KEY);
+      const storedName = localStorage.getItem(USER_NAME_KEY) || 'Guest User';
+      
+      if (!storedUserId) {
+        navigate('/login');
+        return;
+      }
+
+      setIsGoogleUser(false);
+      setUserId(storedUserId);
+      setDisplayName(storedName);
     };
 
-    loadUserData();
-
-    // Listen for auth state changes
+    // Set up auth listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         setIsGoogleUser(true);
@@ -70,8 +69,19 @@ const Profile = () => {
         setDisplayName(googleName);
         localStorage.setItem(USER_ID_KEY, session.user.id);
         localStorage.setItem(USER_NAME_KEY, googleName);
+      } else if (event === 'SIGNED_OUT') {
+        // On sign out, check if we have a guest user
+        const storedUserId = localStorage.getItem(USER_ID_KEY);
+        if (storedUserId) {
+          setIsGoogleUser(false);
+          setUserId(storedUserId);
+          setDisplayName(localStorage.getItem(USER_NAME_KEY) || 'Guest User');
+        }
       }
     });
+
+    // THEN check for existing session
+    loadUserData();
 
     return () => subscription.unsubscribe();
   }, [navigate]);

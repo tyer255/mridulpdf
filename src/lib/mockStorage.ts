@@ -110,7 +110,7 @@ export const mockStorage = {
     return stored ? JSON.parse(stored) : [];
   },
 
-  async getWorldPDFs(limit: number = 50, offset: number = 0): Promise<PDFDocument[]> {
+  async getWorldPDFs(limit: number = 50, offset: number = 0): Promise<(PDFDocument & { displayName?: string })[]> {
     // Don't fetch download_url initially for old base64 data to avoid timeout
     const { data, error } = await supabase
       .from('world_pdfs')
@@ -132,6 +132,7 @@ export const mockStorage = {
       size: pdf.size,
       tags: pdf.tags as PDFTag[],
       pageCount: pdf.page_count,
+      displayName: pdf.display_name || 'Guest User',
     }));
   },
 
@@ -151,7 +152,7 @@ export const mockStorage = {
     return this.getPDFs().filter(pdf => pdf.userId === userId && pdf.visibility === 'private');
   },
 
-  async searchWorldPDFs(query: string, tags: PDFTag[], limit: number = 50): Promise<PDFDocument[]> {
+  async searchWorldPDFs(query: string, tags: PDFTag[], limit: number = 50): Promise<(PDFDocument & { displayName?: string })[]> {
     let dbQuery = supabase
       .from('world_pdfs')
       .select('id, name, user_id, timestamp, thumbnail_url, size, tags, page_count, display_name');
@@ -187,6 +188,7 @@ export const mockStorage = {
       size: pdf.size,
       tags: pdf.tags as PDFTag[],
       pageCount: pdf.page_count,
+      displayName: pdf.display_name || 'Guest User',
     }));
   },
 
