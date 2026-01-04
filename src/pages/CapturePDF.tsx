@@ -321,6 +321,8 @@ const handleGallerySelection = async (e: React.ChangeEvent<HTMLInputElement>) =>
       // Generate thumbnail from first image (use processed JPEG for reliability)
       const thumbnailUrl = await generateThumbnail(images[0]);
 
+      const displayName = await getUserDisplayName();
+      
       await mockStorage.savePDF({
         name: pdfName.trim(),
         userId,
@@ -331,7 +333,7 @@ const handleGallerySelection = async (e: React.ChangeEvent<HTMLInputElement>) =>
         size: pdfBlob.size,
         tags,
         pageCount: totalPages,
-      }, getUserDisplayName());
+      }, displayName);
 
       alertEvent.uploadComplete(pdfName.trim());
       toast({

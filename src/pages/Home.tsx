@@ -278,7 +278,7 @@ const Home = () => {
         open={selectedPDF !== null}
         onOpenChange={(open) => !open && setSelectedPDF(null)}
         onDownload={handleDownload}
-        displayName={(selectedPDF as any)?.displayName}
+        displayName={(selectedPDF as any)?.displayName || 'Guest User'}
       />
 
       {/* Delete Confirmation Dialog */}
