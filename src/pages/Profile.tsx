@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Save, LogOut, Bell, Palette } from 'lucide-react';
+import { ArrowLeft, Save, LogOut, Bell, Palette, User } from 'lucide-react';
 import { mockStorage } from '@/lib/mockStorage';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -15,6 +16,7 @@ const USER_NAME_KEY = 'user_display_name';
 const Profile = () => {
   const [userId, setUserId] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [totalPDFs, setTotalPDFs] = useState(0);
   const [isGoogleUser, setIsGoogleUser] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -39,6 +41,12 @@ const Profile = () => {
                           'User';
         setDisplayName(googleName);
         
+        // Get avatar URL from Google user metadata
+        const googleAvatar = session.user.user_metadata?.avatar_url || 
+                            session.user.user_metadata?.picture || 
+                            null;
+        setAvatarUrl(googleAvatar);
+        
         // Also update localStorage for consistency
         localStorage.setItem(USER_ID_KEY, session.user.id);
         localStorage.setItem(USER_NAME_KEY, googleName);
@@ -55,6 +63,7 @@ const Profile = () => {
         setIsGoogleUser(false);
         setUserId(storedUserId);
         setDisplayName(storedName);
+        setAvatarUrl(null);
       }
       setIsLoading(false);
     };
@@ -149,6 +158,24 @@ const Profile = () => {
         </div>
 
         <div className="max-w-2xl mx-auto space-y-6">
+          {/* Profile Avatar Section */}
+          <div className="flex flex-col items-center gap-3 py-4">
+            <Avatar className="h-24 w-24">
+              {avatarUrl ? (
+                <AvatarImage src={avatarUrl} alt={displayName} />
+              ) : null}
+              <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
+                {isGoogleUser ? displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : <User className="h-10 w-10" />}
+              </AvatarFallback>
+            </Avatar>
+            <div className="text-center">
+              <h2 className="text-xl font-semibold text-foreground">{displayName}</h2>
+              <p className="text-sm text-muted-foreground">
+                {isGoogleUser ? 'Google Account' : 'Guest Account'}
+              </p>
+            </div>
+          </div>
+
           <Card>
             <CardHeader>
               <CardTitle>Account Information</CardTitle>
