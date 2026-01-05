@@ -69,14 +69,12 @@ const Profile = () => {
     };
 
     // Set up auth listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('Profile: Auth state changed', event, session?.user?.email);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       updateUserState(session);
     });
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Profile: Initial session check', session?.user?.email);
       updateUserState(session);
     });
 
