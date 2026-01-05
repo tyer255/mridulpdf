@@ -17,13 +17,15 @@ const Profile = () => {
   const [displayName, setDisplayName] = useState('');
   const [totalPDFs, setTotalPDFs] = useState(0);
   const [isGoogleUser, setIsGoogleUser] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    const loadUserData = async () => {
-      // First check for Supabase session (Google auth)
-      const { data: { session } } = await supabase.auth.getSession();
+    let isMounted = true;
+
+    const updateUserState = (session: any) => {
+      if (!isMounted) return;
       
       if (session?.user) {
         // User is authenticated via Google
@@ -40,50 +42,39 @@ const Profile = () => {
         // Also update localStorage for consistency
         localStorage.setItem(USER_ID_KEY, session.user.id);
         localStorage.setItem(USER_NAME_KEY, googleName);
-        return;
-      }
-      
-      // Check for guest user
-      const storedUserId = localStorage.getItem(USER_ID_KEY);
-      const storedName = localStorage.getItem(USER_NAME_KEY) || 'Guest User';
-      
-      if (!storedUserId) {
-        navigate('/login');
-        return;
-      }
+      } else {
+        // Check for guest user
+        const storedUserId = localStorage.getItem(USER_ID_KEY);
+        const storedName = localStorage.getItem(USER_NAME_KEY) || 'Guest User';
+        
+        if (!storedUserId) {
+          navigate('/login');
+          return;
+        }
 
-      setIsGoogleUser(false);
-      setUserId(storedUserId);
-      setDisplayName(storedName);
+        setIsGoogleUser(false);
+        setUserId(storedUserId);
+        setDisplayName(storedName);
+      }
+      setIsLoading(false);
     };
 
     // Set up auth listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) {
-        setIsGoogleUser(true);
-        setUserId(session.user.id);
-        const googleName = session.user.user_metadata?.full_name || 
-                          session.user.user_metadata?.name || 
-                          session.user.email || 
-                          'User';
-        setDisplayName(googleName);
-        localStorage.setItem(USER_ID_KEY, session.user.id);
-        localStorage.setItem(USER_NAME_KEY, googleName);
-      } else if (event === 'SIGNED_OUT') {
-        // On sign out, check if we have a guest user
-        const storedUserId = localStorage.getItem(USER_ID_KEY);
-        if (storedUserId) {
-          setIsGoogleUser(false);
-          setUserId(storedUserId);
-          setDisplayName(localStorage.getItem(USER_NAME_KEY) || 'Guest User');
-        }
-      }
+      console.log('Profile: Auth state changed', event, session?.user?.email);
+      updateUserState(session);
     });
 
     // THEN check for existing session
-    loadUserData();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Profile: Initial session check', session?.user?.email);
+      updateUserState(session);
+    });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, [navigate]);
 
   // Load PDF count separately
@@ -134,6 +125,14 @@ const Profile = () => {
     
     navigate('/login');
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pb-20">
