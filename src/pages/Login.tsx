@@ -33,32 +33,35 @@ const Login = () => {
 
   // Check if user is already authenticated
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const storedUserId = localStorage.getItem(USER_ID_KEY);
-      
-      // If user has a Supabase session, redirect to home
-      if (session) {
-        // Ensure we have local storage set for authenticated user
-        if (!storedUserId) {
-          localStorage.setItem(USER_ID_KEY, session.user.id);
-        }
-        const userName = session.user.user_metadata?.full_name || 
-                        session.user.user_metadata?.name || 
-                        session.user.email || 
-                        'User';
-        localStorage.setItem(USER_NAME_KEY, userName);
-        navigate('/');
-        return;
-      }
-      
-      // If user has guest ID, redirect to home
-      if (storedUserId) {
-        navigate('/');
-      }
+    const applySession = (session: any) => {
+      if (!session?.user) return false;
+
+      // Always overwrite guest localStorage with authenticated user
+      localStorage.setItem(USER_ID_KEY, session.user.id);
+      const userName = session.user.user_metadata?.full_name ||
+        session.user.user_metadata?.name ||
+        session.user.email ||
+        'User';
+      localStorage.setItem(USER_NAME_KEY, userName);
+
+      navigate('/');
+      return true;
     };
-    
-    checkAuth();
+
+    // Listen first
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      applySession(session);
+    });
+
+    // Then check existing session / guest
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (applySession(session)) return;
+
+      const storedUserId = localStorage.getItem(USER_ID_KEY);
+      if (storedUserId) navigate('/');
+    });
+
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
   const handleGoogleLogin = async () => {
