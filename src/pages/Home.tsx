@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { mockStorage } from '@/lib/mockStorage';
 import { PDFDocument, PDFTag } from '@/types/pdf';
 import { Card } from '@/components/ui/card';
@@ -10,8 +10,7 @@ import SearchBar from '@/components/SearchBar';
 import { Badge } from '@/components/ui/badge';
 import Header from '@/components/Header';
 import PDFDetailsSheet from '@/components/PDFDetailsSheet';
-import GoogleLoginPrompt from '@/components/GoogleLoginPrompt';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/auth/AuthProvider';
 
 import { alertEvent } from '@/lib/preferences';
 import {
@@ -32,28 +31,22 @@ const Home = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [selectedPDF, setSelectedPDF] = useState<PDFDocument | null>(null);
-  const [showGooglePrompt, setShowGooglePrompt] = useState(false);
   const { toast } = useToast();
-  const location = useLocation();
-  const currentUserId = localStorage.getItem('anonymous_user_id');
+  const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/login');
+    }
+  }, [authLoading, user, navigate]);
 
   useEffect(() => {
-    loadWorldPDFs();
-    checkAuthAndShowPrompt();
-  }, [location.pathname]);
-
-  const checkAuthAndShowPrompt = async () => {
-    // Check if user is logged in with Supabase
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    // If user is a guest (has guest ID but no Supabase session) and hasn't dismissed the prompt
-    if (currentUserId && !session && !sessionStorage.getItem('google_prompt_dismissed')) {
-      // Show prompt after a short delay
-      setTimeout(() => {
-        setShowGooglePrompt(true);
-      }, 1500);
+    if (user) {
+      loadWorldPDFs();
     }
-  };
+  }, [user]);
 
   const loadWorldPDFs = async (retryCount = 0) => {
     try {
@@ -63,7 +56,6 @@ const Home = () => {
     } catch (error: any) {
       console.error('Error loading world PDFs:', error);
       
-      // Retry once if timeout error
       if (retryCount === 0 && error?.code === '57014') {
         console.log('Retrying with smaller limit...');
         setTimeout(() => loadWorldPDFs(1), 1000);
@@ -106,7 +98,6 @@ const Home = () => {
 
   const handleDownload = async (pdf: PDFDocument) => {
     try {
-      // For world PDFs, fetch download URL if not already present
       let downloadUrl = pdf.downloadUrl;
       if (pdf.visibility === 'world' && !downloadUrl) {
         downloadUrl = await mockStorage.getPDFDownloadUrl(pdf.id);
@@ -137,7 +128,6 @@ const Home = () => {
     }
   };
 
-
   const handleDelete = async (pdfId: string) => {
     try {
       await mockStorage.deletePDF(pdfId, 'world');
@@ -164,6 +154,18 @@ const Home = () => {
       year: 'numeric'
     });
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -248,7 +250,7 @@ const Home = () => {
                           </div>
                         )}
                       </div>
-                      {currentUserId === pdf.userId && (
+                      {user.id === pdf.userId && (
                         <div className="flex gap-1 ml-2 flex-shrink-0">
                           <Button
                             size="icon"
@@ -278,7 +280,7 @@ const Home = () => {
         open={selectedPDF !== null}
         onOpenChange={(open) => !open && setSelectedPDF(null)}
         onDownload={handleDownload}
-        displayName={(selectedPDF as any)?.displayName || 'Guest User'}
+        displayName={(selectedPDF as any)?.displayName || 'User'}
       />
 
       {/* Delete Confirmation Dialog */}
@@ -298,12 +300,6 @@ const Home = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Google Login Prompt */}
-      <GoogleLoginPrompt 
-        open={showGooglePrompt} 
-        onOpenChange={setShowGooglePrompt} 
-      />
     </div>
   );
 };
