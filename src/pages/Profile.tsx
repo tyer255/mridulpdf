@@ -25,8 +25,9 @@ const Profile = () => {
 
   useEffect(() => {
     let isMounted = true;
+    let hasReceivedAuthEvent = false;
 
-    const updateUserState = (session: any) => {
+    const updateUserState = (session: any, fromAuthListener: boolean) => {
       if (!isMounted) return;
       
       if (session?.user) {
@@ -50,32 +51,51 @@ const Profile = () => {
         // Also update localStorage for consistency
         localStorage.setItem(USER_ID_KEY, session.user.id);
         localStorage.setItem(USER_NAME_KEY, googleName);
+        setIsLoading(false);
       } else {
+        // Only redirect to login if we've confirmed there's no session
+        // AND no guest user - but wait for auth listener first on initial load
+        if (fromAuthListener) {
+          hasReceivedAuthEvent = true;
+        }
+        
         // Check for guest user
         const storedUserId = localStorage.getItem(USER_ID_KEY);
         const storedName = localStorage.getItem(USER_NAME_KEY) || 'Guest User';
         
-        if (!storedUserId) {
+        if (storedUserId) {
+          setIsGoogleUser(false);
+          setUserId(storedUserId);
+          setDisplayName(storedName);
+          setAvatarUrl(null);
+          setIsLoading(false);
+        } else if (hasReceivedAuthEvent) {
+          // Only redirect after auth listener has confirmed no session
           navigate('/login');
-          return;
         }
-
-        setIsGoogleUser(false);
-        setUserId(storedUserId);
-        setDisplayName(storedName);
-        setAvatarUrl(null);
       }
-      setIsLoading(false);
     };
 
-    // Set up auth listener FIRST
+    // Set up auth listener FIRST - this is the source of truth
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      updateUserState(session);
+      updateUserState(session, true);
     });
 
-    // THEN check for existing session
+    // THEN check for existing session (fallback for immediate render)
     supabase.auth.getSession().then(({ data: { session } }) => {
-      updateUserState(session);
+      // Only process if auth listener hasn't fired yet
+      if (!hasReceivedAuthEvent) {
+        updateUserState(session, false);
+        
+        // If no session and no guest, give auth listener a moment then redirect
+        if (!session && !localStorage.getItem(USER_ID_KEY)) {
+          setTimeout(() => {
+            if (isMounted && !hasReceivedAuthEvent) {
+              navigate('/login');
+            }
+          }, 500);
+        }
+      }
     });
 
     return () => {
