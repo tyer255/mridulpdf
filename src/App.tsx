@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { AuthProvider } from "@/auth/AuthProvider";
 import Index from "./pages/Index";
 import AddPDF from "./pages/AddPDF";
 import Library from "./pages/Library";
@@ -48,37 +49,33 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/" element={<Index />} />
-            <Route path="/add" element={<AddPDF />} />
-            <Route path="/library" element={<Library />} />
-            <Route path="/capture" element={<CapturePDF />} />
-            <Route path="/import" element={<ImportPDF />} />
-            <Route path="/ocr" element={<HandwritingOCR />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/notifications" element={<NotificationSettings />} />
-            <Route path="/appearance" element={<AppearanceSettings />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          <BottomNav />
-          
-          {/* Notification Permission Dialog */}
-          <NotificationPermission 
-            open={showPermissionDialog} 
-            onOpenChange={setShowPermissionDialog} 
-          />
-          
-          {/* World Upload Notification */}
-          {notification && (
-            <WorldUploadNotification 
-              notification={notification} 
-              onClose={clearNotification} 
-            />
-          )}
-        </BrowserRouter>
+        <AuthProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/" element={<Index />} />
+              <Route path="/add" element={<AddPDF />} />
+              <Route path="/library" element={<Library />} />
+              <Route path="/capture" element={<CapturePDF />} />
+              <Route path="/import" element={<ImportPDF />} />
+              <Route path="/ocr" element={<HandwritingOCR />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/notifications" element={<NotificationSettings />} />
+              <Route path="/appearance" element={<AppearanceSettings />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+            <BottomNav />
+
+            {/* Notification Permission Dialog */}
+            <NotificationPermission open={showPermissionDialog} onOpenChange={setShowPermissionDialog} />
+
+            {/* World Upload Notification */}
+            {notification && (
+              <WorldUploadNotification notification={notification} onClose={clearNotification} />
+            )}
+          </BrowserRouter>
+        </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );
