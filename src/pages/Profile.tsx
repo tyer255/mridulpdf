@@ -1,108 +1,67 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Save, LogOut, Bell, Palette, User } from 'lucide-react';
-import { mockStorage } from '@/lib/mockStorage';
-import { supabase } from '@/integrations/supabase/client';
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useToast } from "@/hooks/use-toast";
+import { ArrowLeft, Save, LogOut, Bell, Palette, User } from "lucide-react";
+import { mockStorage } from "@/lib/mockStorage";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/auth/AuthProvider";
 
-const USER_ID_KEY = 'anonymous_user_id';
-const USER_NAME_KEY = 'user_display_name';
+const USER_ID_KEY = "anonymous_user_id";
+const USER_NAME_KEY = "user_display_name";
 
 const Profile = () => {
-  const [userId, setUserId] = useState('');
-  const [displayName, setDisplayName] = useState('');
+  const [userId, setUserId] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [totalPDFs, setTotalPDFs] = useState(0);
   const [isGoogleUser, setIsGoogleUser] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, loading } = useAuth();
 
+  const guestUser = useMemo(() => {
+    const storedUserId = localStorage.getItem(USER_ID_KEY);
+    const storedName = localStorage.getItem(USER_NAME_KEY) || "Guest User";
+    return storedUserId ? { id: storedUserId, name: storedName } : null;
+  }, []);
+
+  // REQUIRED FIX: wait for the session check to finish before deciding redirect.
   useEffect(() => {
-    let isMounted = true;
-    let hasReceivedAuthEvent = false;
+    if (loading) return;
 
-    const updateUserState = (session: any, fromAuthListener: boolean) => {
-      if (!isMounted) return;
-      
-      if (session?.user) {
-        // User is authenticated via Google
-        setIsGoogleUser(true);
-        setUserId(session.user.id);
-        
-        // Get display name from Google user metadata
-        const googleName = session.user.user_metadata?.full_name || 
-                          session.user.user_metadata?.name || 
-                          session.user.email || 
-                          'User';
-        setDisplayName(googleName);
-        
-        // Get avatar URL from Google user metadata
-        const googleAvatar = session.user.user_metadata?.avatar_url || 
-                            session.user.user_metadata?.picture || 
-                            null;
-        setAvatarUrl(googleAvatar);
-        
-        // Also update localStorage for consistency
-        localStorage.setItem(USER_ID_KEY, session.user.id);
-        localStorage.setItem(USER_NAME_KEY, googleName);
-        setIsLoading(false);
-      } else {
-        // Only redirect to login if we've confirmed there's no session
-        // AND no guest user - but wait for auth listener first on initial load
-        if (fromAuthListener) {
-          hasReceivedAuthEvent = true;
-        }
-        
-        // Check for guest user
-        const storedUserId = localStorage.getItem(USER_ID_KEY);
-        const storedName = localStorage.getItem(USER_NAME_KEY) || 'Guest User';
-        
-        if (storedUserId) {
-          setIsGoogleUser(false);
-          setUserId(storedUserId);
-          setDisplayName(storedName);
-          setAvatarUrl(null);
-          setIsLoading(false);
-        } else if (hasReceivedAuthEvent) {
-          // Only redirect after auth listener has confirmed no session
-          navigate('/login');
-        }
-      }
-    };
+    if (user) {
+      setIsGoogleUser(true);
+      setUserId(user.id);
 
-    // Set up auth listener FIRST - this is the source of truth
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      updateUserState(session, true);
-    });
+      const googleName =
+        user.user_metadata?.full_name || user.user_metadata?.name || user.email || "User";
+      setDisplayName(googleName);
 
-    // THEN check for existing session (fallback for immediate render)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      // Only process if auth listener hasn't fired yet
-      if (!hasReceivedAuthEvent) {
-        updateUserState(session, false);
-        
-        // If no session and no guest, give auth listener a moment then redirect
-        if (!session && !localStorage.getItem(USER_ID_KEY)) {
-          setTimeout(() => {
-            if (isMounted && !hasReceivedAuthEvent) {
-              navigate('/login');
-            }
-          }, 500);
-        }
-      }
-    });
+      const googleAvatar = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
+      setAvatarUrl(googleAvatar);
 
-    return () => {
-      isMounted = false;
-      subscription.unsubscribe();
-    };
-  }, [navigate]);
+      // Keep existing behavior for now (for consistency with current app storage)
+      localStorage.setItem(USER_ID_KEY, user.id);
+      localStorage.setItem(USER_NAME_KEY, googleName);
+      return;
+    }
+
+    if (guestUser) {
+      setIsGoogleUser(false);
+      setUserId(guestUser.id);
+      setDisplayName(guestUser.name);
+      setAvatarUrl(null);
+      return;
+    }
+
+    navigate("/login");
+  }, [loading, user, guestUser, navigate]);
 
   // Load PDF count separately
   useEffect(() => {
@@ -110,7 +69,7 @@ const Profile = () => {
       if (!userId) return;
       const worldPDFs = await mockStorage.getWorldPDFs();
       const privatePDFs = mockStorage.getUserPDFs(userId);
-      const userWorldPDFs = worldPDFs.filter(pdf => pdf.userId === userId);
+      const userWorldPDFs = worldPDFs.filter((pdf) => pdf.userId === userId);
       setTotalPDFs(userWorldPDFs.length + privatePDFs.length);
     };
 
@@ -153,10 +112,10 @@ const Profile = () => {
     navigate('/login');
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
   }
