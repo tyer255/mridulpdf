@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { AuthProvider } from "@/auth/AuthProvider";
+import ProtectedRoute from "@/auth/ProtectedRoute";
 import Index from "./pages/Index";
 import AddPDF from "./pages/AddPDF";
 import Library from "./pages/Library";
@@ -53,15 +54,80 @@ const App = () => {
           <BrowserRouter>
             <Routes>
               <Route path="/login" element={<Login />} />
-              <Route path="/" element={<Index />} />
-              <Route path="/add" element={<AddPDF />} />
-              <Route path="/library" element={<Library />} />
-              <Route path="/capture" element={<CapturePDF />} />
-              <Route path="/import" element={<ImportPDF />} />
-              <Route path="/ocr" element={<HandwritingOCR />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/notifications" element={<NotificationSettings />} />
-              <Route path="/appearance" element={<AppearanceSettings />} />
+
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <Index />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/add"
+                element={
+                  <ProtectedRoute>
+                    <AddPDF />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/library"
+                element={
+                  <ProtectedRoute>
+                    <Library />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/capture"
+                element={
+                  <ProtectedRoute>
+                    <CapturePDF />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/import"
+                element={
+                  <ProtectedRoute>
+                    <ImportPDF />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/ocr"
+                element={
+                  <ProtectedRoute>
+                    <HandwritingOCR />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/notifications"
+                element={
+                  <ProtectedRoute>
+                    <NotificationSettings />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/appearance"
+                element={
+                  <ProtectedRoute>
+                    <AppearanceSettings />
+                  </ProtectedRoute>
+                }
+              />
+
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
