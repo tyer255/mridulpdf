@@ -10,23 +10,36 @@ const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Check if user is already authenticated
+  // If we returned from Google with a ?code= (PKCE flow), exchange it for a session
   useEffect(() => {
-    // Listen first
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        navigate('/');
-      }
-    });
+    let cancelled = false;
 
-    // Then check existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        navigate('/');
-      }
-    });
+    const run = async () => {
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get("code");
 
-    return () => subscription.unsubscribe();
+      // Handle OAuth callback
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
+        if (!cancelled && !error) {
+          // Clean the URL so refresh doesn't re-run the exchange
+          window.history.replaceState({}, document.title, url.pathname);
+          navigate("/");
+          return;
+        }
+      }
+
+      // Fallback: if session already exists, go home
+      const { data } = await supabase.auth.getSession();
+      if (!cancelled && data.session?.user) {
+        navigate("/");
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
   }, [navigate]);
 
   const handleGoogleLogin = async () => {
