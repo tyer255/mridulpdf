@@ -1,38 +1,13 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from "@/auth/AuthProvider";
+import { supabase } from "@/integrations/supabase/client";
 
+// Legacy hook name kept to avoid refactors across the app.
+// Guest accounts are removed; we now return the authenticated user's id.
 export const useAnonymousUser = () => {
-  const [userId, setUserId] = useState<string | null>(null);
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        setUserId(session.user.id);
-        return;
-      }
-      
-      navigate('/login');
-    };
-
-    checkUser();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) {
-        setUserId(session.user.id);
-      } else {
-        navigate('/login');
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
-
-  return userId;
+  const { user } = useAuth();
+  return user?.id ?? null;
 };
+
 
 export const getUserDisplayName = async (): Promise<string> => {
   const { data: { session } } = await supabase.auth.getSession();
