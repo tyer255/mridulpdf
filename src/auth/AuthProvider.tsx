@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -14,6 +14,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const initialized = useRef(false);
 
   useEffect(() => {
     let mounted = true;
@@ -26,7 +27,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       // Once we receive any auth event, we consider auth initialized.
-      setLoading(false);
+      if (!initialized.current) {
+        initialized.current = true;
+        setLoading(false);
+      }
     });
 
     // THEN initial session fetch
@@ -39,7 +43,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       .finally(() => {
         if (!mounted) return;
-        setLoading(false);
+        if (!initialized.current) {
+          initialized.current = true;
+          setLoading(false);
+        }
       });
 
     return () => {
