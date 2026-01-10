@@ -48,7 +48,8 @@ const Login = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/`,
+          // Important: keep the OAuth callback on /login so this page can exchange the code.
+          redirectTo: `${window.location.origin}/login`,
         },
       });
 
