@@ -101,7 +101,6 @@ const ImportPDF = () => {
       const reader = new FileReader();
       reader.onload = async (e) => {
         const dataUrl = e.target?.result as string;
-        const displayName = await getUserDisplayName();
         
         await mockStorage.savePDF({
           name: pdfName.trim(),
@@ -113,7 +112,7 @@ const ImportPDF = () => {
           tags,
           thumbnailUrl: undefined, // Could generate from PDF first page
           pageCount: undefined,
-        }, displayName);
+        }, getUserDisplayName());
 
         alertEvent.uploadComplete(pdfName.trim());
         setUploading(false);
