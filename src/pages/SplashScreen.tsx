@@ -6,6 +6,7 @@ const SplashScreen = () => {
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [hasPlayed, setHasPlayed] = useState(false);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     // Check if splash has been shown this session
@@ -17,15 +18,20 @@ const SplashScreen = () => {
 
     const video = videoRef.current;
     if (video) {
-      // Attempt to play video
-      const playPromise = video.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(() => {
-          // If autoplay fails, navigate immediately
-          sessionStorage.setItem('splashShown', 'true');
-          navigate('/home', { replace: true });
-        });
-      }
+      // Wait for video to be ready before playing
+      video.addEventListener('canplaythrough', () => {
+        setIsReady(true);
+        const playPromise = video.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {
+            sessionStorage.setItem('splashShown', 'true');
+            navigate('/home', { replace: true });
+          });
+        }
+      });
+
+      // Preload video
+      video.load();
     }
   }, [navigate]);
 
@@ -38,22 +44,32 @@ const SplashScreen = () => {
   };
 
   const handleVideoError = () => {
-    // If video fails to load, navigate to home
     sessionStorage.setItem('splashShown', 'true');
     navigate('/home', { replace: true });
   };
 
   return (
-    <div className="fixed inset-0 bg-white flex items-center justify-center z-50">
+    <div 
+      className="fixed inset-0 flex items-center justify-center z-50"
+      style={{ backgroundColor: '#FFFFFF' }}
+    >
       <video
         ref={videoRef}
         src={splashVideo}
-        autoPlay
         muted
         playsInline
+        preload="auto"
         onEnded={handleVideoEnd}
         onError={handleVideoError}
+        controls={false}
+        disablePictureInPicture
+        disableRemotePlayback
         className="max-w-full max-h-full object-contain"
+        style={{ 
+          backgroundColor: '#FFFFFF',
+          opacity: isReady ? 1 : 0,
+          transition: 'opacity 0.1s ease-in'
+        }}
       />
     </div>
   );
