@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { User, FileText } from 'lucide-react';
+import { User } from 'lucide-react';
+import mridulLogo from '@/assets/mridulpdf-logo.png';
 
 const USER_ID_KEY = 'anonymous_user_id';
 
@@ -21,9 +22,11 @@ const Header = () => {
     <div className="sticky top-0 z-40 glass-strong border-b border-border/50">
       <div className="px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center shadow-md">
-            <FileText className="w-5 h-5 text-white" />
-          </div>
+          <img 
+            src={mridulLogo} 
+            alt="MRIDUL PDF Logo" 
+            className="w-9 h-9 object-contain"
+          />
           <div>
             <h1 className="text-lg font-bold text-foreground tracking-tight">MRIDUL PDF</h1>
             <p className="text-[10px] text-muted-foreground -mt-0.5">Share • Create • Manage</p>
