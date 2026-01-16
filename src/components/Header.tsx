@@ -1,32 +1,29 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { User } from 'lucide-react';
-import mridulLogo from '@/assets/mridulpdf-logo.png';
+import { User, FileText } from 'lucide-react';
 
 const USER_ID_KEY = 'anonymous_user_id';
 
 const Header = () => {
-  const [guestId, setGuestId] = useState<string | null>(null);
+  const [guestId, setGuestId] = useState('');
 
   useEffect(() => {
     const storedId = localStorage.getItem(USER_ID_KEY);
     if (storedId) {
       setGuestId(storedId.slice(0, 8));
-    } else {
-      setGuestId('Guest');
     }
   }, []);
+
+  if (!guestId) return null;
 
   return (
     <div className="sticky top-0 z-40 glass-strong border-b border-border/50">
       <div className="px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <img 
-            src={mridulLogo} 
-            alt="MRIDUL PDF Logo" 
-            className="w-9 h-9 object-contain"
-          />
+          <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center shadow-md">
+            <FileText className="w-5 h-5 text-white" />
+          </div>
           <div>
             <h1 className="text-lg font-bold text-foreground tracking-tight">MRIDUL PDF</h1>
             <p className="text-[10px] text-muted-foreground -mt-0.5">Share • Create • Manage</p>
