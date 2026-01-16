@@ -7,16 +7,16 @@ import mridulLogo from '@/assets/mridulpdf-logo.png';
 const USER_ID_KEY = 'anonymous_user_id';
 
 const Header = () => {
-  const [guestId, setGuestId] = useState('');
+  const [guestId, setGuestId] = useState<string | null>(null);
 
   useEffect(() => {
     const storedId = localStorage.getItem(USER_ID_KEY);
     if (storedId) {
       setGuestId(storedId.slice(0, 8));
+    } else {
+      setGuestId('Guest');
     }
   }, []);
-
-  if (!guestId) return null;
 
   return (
     <div className="sticky top-0 z-40 glass-strong border-b border-border/50">
