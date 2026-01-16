@@ -124,18 +124,18 @@ const Library = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen min-h-[100dvh] bg-background pb-24 safe-top overflow-x-hidden">
       <Header />
       
-      <div className="p-4 sm:p-6">
+      <div className="p-4 sm:p-6 app-container">
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
-              <FolderOpen className="w-4 h-4 text-white" />
+              <Lock className="w-4 h-4 text-white" />
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground">My Library</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground">Private PDFs</h1>
           </div>
-          <p className="text-sm text-muted-foreground">All your uploaded and created PDFs</p>
+          <p className="text-sm text-muted-foreground">All your private and uploaded PDFs</p>
         </div>
         
         {loading ? (

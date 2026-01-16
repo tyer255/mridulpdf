@@ -1,4 +1,4 @@
-import { Home, PlusCircle, FolderOpen, User } from 'lucide-react';
+import { Home, PlusCircle, Lock, User } from 'lucide-react';
 import { useLocation, Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
@@ -19,15 +19,15 @@ const BottomNav = () => {
 
   const navItems = [
     { path: '/home', icon: Home, label: 'Home' },
-    { path: '/add', icon: PlusCircle, label: 'Add' },
-    { path: '/library', icon: FolderOpen, label: 'Library' },
+    { path: '/add', icon: PlusCircle, label: 'Create' },
+    { path: '/library', icon: Lock, label: 'Private PDFs' },
     { path: '/profile', icon: User, label: 'Profile' },
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 safe-bottom">
       <div className="glass-strong border-t border-border/50 shadow-[0_-4px_20px_-5px_hsl(var(--foreground)/0.1)]">
-        <div className="flex items-center justify-around h-16 max-w-screen-lg mx-auto px-2">
+        <div className="flex items-center justify-around h-16 app-container px-2">
           {navItems.map(({ path, icon: Icon, label }) => {
             const active = isActive(path);
             return (
@@ -52,7 +52,7 @@ const BottomNav = () => {
                   )} />
                 </div>
                 <span className={cn(
-                  'text-[10px] font-medium transition-all duration-200',
+                  'text-[10px] font-medium transition-all duration-200 truncate max-w-[60px]',
                   active && 'font-semibold'
                 )}>{label}</span>
               </Link>
@@ -60,8 +60,6 @@ const BottomNav = () => {
           })}
         </div>
       </div>
-      {/* Safe area spacing for iOS */}
-      <div className="h-safe-area-inset-bottom bg-card" />
     </nav>
   );
 };

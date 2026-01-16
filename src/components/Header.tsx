@@ -18,8 +18,8 @@ const Header = () => {
   if (!guestId) return null;
 
   return (
-    <div className="sticky top-0 z-40 glass-strong border-b border-border/50">
-      <div className="px-4 py-3 flex items-center justify-between">
+    <div className="sticky top-0 z-40 glass-strong border-b border-border/50 safe-top safe-x">
+      <div className="px-4 py-3 flex items-center justify-between app-container">
         <div className="flex items-center gap-2">
           <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center shadow-md">
             <FileText className="w-5 h-5 text-white" />
