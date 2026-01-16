@@ -143,10 +143,18 @@ All colors MUST be HSL.
   * {
     @apply border-border;
   }
+  
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
 
   body {
     @apply bg-background text-foreground antialiased;
     font-family: var(--font-sans);
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
   }
   
   h1, h2, h3 {
@@ -173,6 +181,21 @@ All colors MUST be HSL.
   
   .glass-strong {
     @apply bg-card/95 backdrop-blur-2xl;
+  }
+  
+  /* Dark glassmorphism for Create screen */
+  .glass-dark {
+    background: hsl(224 47% 8% / 0.85);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid hsl(0 0% 100% / 0.08);
+  }
+  
+  .glass-dark-strong {
+    background: hsl(224 47% 6% / 0.95);
+    backdrop-filter: blur(32px);
+    -webkit-backdrop-filter: blur(32px);
+    border: 1px solid hsl(0 0% 100% / 0.12);
   }
   
   .hover-lift {
@@ -206,6 +229,55 @@ All colors MUST be HSL.
   .text-gradient {
     @apply bg-clip-text text-transparent;
     background: var(--gradient-primary);
+  }
+  
+  /* Safe area utilities */
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  
+  .safe-left {
+    padding-left: env(safe-area-inset-left, 0px);
+  }
+  
+  .safe-right {
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+  
+  .safe-x {
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+  
+  .safe-y {
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  
+  .safe-all {
+    padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  }
+  
+  /* App container for desktop centering */
+  .app-container {
+    @apply w-full mx-auto;
+    max-width: 100%;
+  }
+  
+  @media (min-width: 768px) {
+    .app-container {
+      max-width: 540px;
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .app-container {
+      max-width: 480px;
+    }
   }
 }
 

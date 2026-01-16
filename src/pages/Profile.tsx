@@ -68,8 +68,8 @@ const Profile = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24">
-      <div className="p-4 sm:p-6">
+    <div className="min-h-screen min-h-[100dvh] bg-background pb-24 safe-top overflow-x-hidden">
+      <div className="p-4 sm:p-6 app-container">
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
           <Button
@@ -83,7 +83,7 @@ const Profile = () => {
           <h1 className="text-xl sm:text-2xl font-bold text-foreground">Profile</h1>
         </div>
 
-        <div className="max-w-2xl mx-auto space-y-6">
+        <div className="space-y-6">
           {/* Profile Card */}
           <Card className="border-border/50 overflow-hidden">
             <div className="h-20 gradient-primary" />

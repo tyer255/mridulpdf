@@ -160,10 +160,10 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen min-h-[100dvh] bg-background pb-24 safe-top overflow-x-hidden">
       <Header />
       
-      <div className="p-4 sm:p-6">
+      <div className="p-4 sm:p-6 app-container">
         {/* Hero Section */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
