@@ -25,7 +25,7 @@ const GoogleLoginPrompt = ({ open, onOpenChange }: GoogleLoginPromptProps) => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/`,
+          redirectTo: `${window.location.origin}/home`,
         },
       });
 

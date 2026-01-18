@@ -1,21 +1,15 @@
-import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { User, FileText } from 'lucide-react';
-
-const USER_ID_KEY = 'anonymous_user_id';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Header = () => {
-  const [guestId, setGuestId] = useState('');
+  const { user, loading, getUserDisplayName, getUserAvatar, getUserId } = useAuth();
+  const displayId = getUserId()?.slice(0, 8) || '';
+  const avatar = getUserAvatar();
+  const displayName = getUserDisplayName();
 
-  useEffect(() => {
-    const storedId = localStorage.getItem(USER_ID_KEY);
-    if (storedId) {
-      setGuestId(storedId.slice(0, 8));
-    }
-  }, []);
-
-  if (!guestId) return null;
+  if (loading || !displayId) return null;
 
   return (
     <div className="sticky top-0 z-40 glass-strong border-b border-border/50 safe-top safe-x">
@@ -35,10 +29,20 @@ const Header = () => {
             size="sm" 
             className="gap-2 rounded-full hover:bg-primary/10 hover:text-primary transition-colors"
           >
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
-              <User className="h-4 w-4 text-primary" />
-            </div>
-            <span className="text-xs font-mono text-muted-foreground">{guestId}...</span>
+            {avatar ? (
+              <img 
+                src={avatar} 
+                alt={displayName} 
+                className="w-7 h-7 rounded-full object-cover border-2 border-primary/20"
+              />
+            ) : (
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                <User className="h-4 w-4 text-primary" />
+              </div>
+            )}
+            <span className="text-xs font-medium text-muted-foreground max-w-[80px] truncate">
+              {user ? displayName.split(' ')[0] : `${displayId}...`}
+            </span>
           </Button>
         </Link>
       </div>

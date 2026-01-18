@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import Header from '@/components/Header';
 import PDFDetailsSheet from '@/components/PDFDetailsSheet';
 import GoogleLoginPrompt from '@/components/GoogleLoginPrompt';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 import { alertEvent } from '@/lib/preferences';
 import {
@@ -35,22 +35,22 @@ const Home = () => {
   const [showGooglePrompt, setShowGooglePrompt] = useState(false);
   const { toast } = useToast();
   const location = useLocation();
-  const currentUserId = localStorage.getItem('anonymous_user_id');
+  const { isAuthenticated, getUserId, loading: authLoading } = useAuth();
+  const currentUserId = getUserId();
 
   useEffect(() => {
     loadWorldPDFs();
-    checkAuthAndShowPrompt();
   }, [location.pathname]);
 
-  const checkAuthAndShowPrompt = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (currentUserId && !session && !sessionStorage.getItem('google_prompt_dismissed')) {
-      setTimeout(() => {
+  // Show Google prompt only for guests who haven't dismissed it
+  useEffect(() => {
+    if (!authLoading && currentUserId && !isAuthenticated && !sessionStorage.getItem('google_prompt_dismissed')) {
+      const timer = setTimeout(() => {
         setShowGooglePrompt(true);
       }, 1500);
+      return () => clearTimeout(timer);
     }
-  };
+  }, [authLoading, currentUserId, isAuthenticated]);
 
   const loadWorldPDFs = async (retryCount = 0) => {
     try {

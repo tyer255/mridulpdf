@@ -5,40 +5,39 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Save, LogOut, Bell, Palette, User, FileText, ChevronRight, Shield } from 'lucide-react';
+import { ArrowLeft, Save, LogOut, Bell, Palette, User, FileText, ChevronRight, Shield, Mail, CheckCircle } from 'lucide-react';
 import { mockStorage } from '@/lib/mockStorage';
-
-const USER_ID_KEY = 'anonymous_user_id';
-const USER_NAME_KEY = 'user_display_name';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Profile = () => {
-  const [userId, setUserId] = useState('');
+  const { user, loading, isAuthenticated, signOut, getUserDisplayName, getUserId, getUserEmail, getUserAvatar } = useAuth();
   const [displayName, setDisplayName] = useState('');
   const [totalPDFs, setTotalPDFs] = useState(0);
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const userId = getUserId();
+  const email = getUserEmail();
+  const avatar = getUserAvatar();
+
   useEffect(() => {
-    const storedUserId = localStorage.getItem(USER_ID_KEY);
-    const storedName = localStorage.getItem(USER_NAME_KEY) || 'Guest User';
-    
-    if (!storedUserId) {
+    if (!loading && !userId) {
       navigate('/login');
       return;
     }
 
-    setUserId(storedUserId);
-    setDisplayName(storedName);
+    setDisplayName(getUserDisplayName());
 
     const loadPDFCount = async () => {
+      if (!userId) return;
       const worldPDFs = await mockStorage.getWorldPDFs();
-      const privatePDFs = mockStorage.getUserPDFs(storedUserId);
-      const userWorldPDFs = worldPDFs.filter(pdf => pdf.userId === storedUserId);
+      const privatePDFs = mockStorage.getUserPDFs(userId);
+      const userWorldPDFs = worldPDFs.filter(pdf => pdf.userId === userId);
       setTotalPDFs(userWorldPDFs.length + privatePDFs.length);
     };
 
     loadPDFCount();
-  }, [navigate]);
+  }, [loading, userId, navigate, getUserDisplayName]);
 
   const handleSaveName = () => {
     if (!displayName.trim()) {
@@ -50,22 +49,29 @@ const Profile = () => {
       return;
     }
 
-    localStorage.setItem(USER_NAME_KEY, displayName.trim());
+    localStorage.setItem('user_display_name', displayName.trim());
     toast({
       title: "Success!",
       description: "Display name updated successfully"
     });
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem(USER_ID_KEY);
-    localStorage.removeItem(USER_NAME_KEY);
+  const handleLogout = async () => {
+    await signOut();
     toast({
       title: "Logged out",
       description: "You have been logged out successfully"
     });
     navigate('/login');
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen min-h-[100dvh] bg-background flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen min-h-[100dvh] bg-background pb-24 safe-top overflow-x-hidden">
@@ -88,41 +94,70 @@ const Profile = () => {
           <Card className="border-border/50 overflow-hidden">
             <div className="h-20 gradient-primary" />
             <div className="relative px-6 pb-6">
-              <div className="w-20 h-20 rounded-2xl bg-card border-4 border-card shadow-lg flex items-center justify-center -mt-10 mb-4">
-                <User className="w-10 h-10 text-primary" />
-              </div>
+              {avatar ? (
+                <img 
+                  src={avatar} 
+                  alt={displayName}
+                  className="w-20 h-20 rounded-2xl object-cover border-4 border-card shadow-lg -mt-10 mb-4"
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-2xl bg-card border-4 border-card shadow-lg flex items-center justify-center -mt-10 mb-4">
+                  <User className="w-10 h-10 text-primary" />
+                </div>
+              )}
               
               <div className="space-y-4">
+                {/* Google Auth Status */}
+                {isAuthenticated && email && (
+                  <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-xl">
+                    <CheckCircle className="w-5 h-5 text-green-500" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-foreground">Signed in with Google</p>
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Mail className="w-3 h-3" /> {email}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* User ID */}
                 <div>
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">Guest ID</Label>
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                    {isAuthenticated ? 'Account ID' : 'Guest ID'}
+                  </Label>
                   <div className="mt-1.5 p-3 bg-muted/50 rounded-xl border border-border/50">
                     <code className="text-sm break-all font-mono text-foreground">{userId}</code>
                   </div>
-                  <p className="text-[11px] text-muted-foreground mt-1.5 flex items-center gap-1">
-                    <Shield className="w-3 h-3" />
-                    Save this ID to access your PDFs on other devices
-                  </p>
+                  {!isAuthenticated && (
+                    <p className="text-[11px] text-muted-foreground mt-1.5 flex items-center gap-1">
+                      <Shield className="w-3 h-3" />
+                      Save this ID to access your PDFs on other devices
+                    </p>
+                  )}
                 </div>
 
-                <div>
-                  <Label htmlFor="displayName" className="text-xs text-muted-foreground uppercase tracking-wider">Display Name</Label>
-                  <div className="flex gap-2 mt-1.5">
-                    <Input
-                      id="displayName"
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
-                      placeholder="Enter your display name"
-                      className="rounded-xl border-border/50 focus-visible:ring-primary/20"
-                    />
-                    <Button 
-                      onClick={handleSaveName} 
-                      size="icon"
-                      className="rounded-xl gradient-primary hover:opacity-90 transition-opacity"
-                    >
-                      <Save className="h-4 w-4" />
-                    </Button>
+                {/* Display Name - only show for guests */}
+                {!isAuthenticated && (
+                  <div>
+                    <Label htmlFor="displayName" className="text-xs text-muted-foreground uppercase tracking-wider">Display Name</Label>
+                    <div className="flex gap-2 mt-1.5">
+                      <Input
+                        id="displayName"
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        placeholder="Enter your display name"
+                        className="rounded-xl border-border/50 focus-visible:ring-primary/20"
+                      />
+                      <Button 
+                        onClick={handleSaveName} 
+                        size="icon"
+                        className="rounded-xl gradient-primary hover:opacity-90 transition-opacity"
+                      >
+                        <Save className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </Card>
@@ -202,7 +237,7 @@ const Profile = () => {
             size="lg"
           >
             <LogOut className="mr-2 h-5 w-5" />
-            Logout
+            {isAuthenticated ? 'Sign Out' : 'Logout'}
           </Button>
         </div>
       </div>
