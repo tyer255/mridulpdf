@@ -22,45 +22,68 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email);
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-        
-        // If user signs in with Google, migrate guest data if needed
-        if (event === 'SIGNED_IN' && session?.user) {
-          // Store user info for backward compatibility
-          localStorage.setItem('anonymous_user_id', session.user.id);
-          localStorage.setItem('user_display_name', session.user.user_metadata?.full_name || session.user.email || 'User');
-        }
-        
-        // Clear localStorage on sign out
-        if (event === 'SIGNED_OUT') {
-          localStorage.removeItem('anonymous_user_id');
-          localStorage.removeItem('user_display_name');
-        }
-      }
-    );
+    let isMounted = true;
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const syncLegacyStorage = (session: Session | null) => {
+      if (session?.user) {
+        localStorage.setItem('anonymous_user_id', session.user.id);
+        localStorage.setItem(
+          'user_display_name',
+          session.user.user_metadata?.full_name || session.user.email || 'User'
+        );
+      }
+    };
+
+    const clearLegacyStorage = () => {
+      localStorage.removeItem('anonymous_user_id');
+      localStorage.removeItem('user_display_name');
+    };
+
+    // 1) Subscribe first so we don't miss SIGNED_IN after redirect.
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state changed:', event, session?.user?.email);
+
+      // INITIAL_SESSION can be null/undefined while the URL/code exchange is still being processed.
+      // We rely on the explicit getSession() call below to determine the initial auth state.
+      if (event === 'INITIAL_SESSION') return;
+
+      if (!isMounted) return;
+
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+
+      if (event === 'SIGNED_IN') {
+        syncLegacyStorage(session);
+      }
+
+      if (event === 'SIGNED_OUT') {
+        clearLegacyStorage();
+      }
+    });
+
+    // 2) Immediately check for an existing session (also handles OAuth callback URL).
+    (async () => {
+      setLoading(true);
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!isMounted) return;
+
       console.log('Initial session check:', session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
-      
-      // Sync localStorage with session
-      if (session?.user) {
-        localStorage.setItem('anonymous_user_id', session.user.id);
-        localStorage.setItem('user_display_name', session.user.user_metadata?.full_name || session.user.email || 'User');
-      }
-      
+      syncLegacyStorage(session);
       setLoading(false);
-    });
+    })();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
