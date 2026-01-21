@@ -12,14 +12,21 @@ interface AuthContextType {
   getUserId: () => string | null;
   getUserEmail: () => string | null;
   getUserAvatar: () => string | null;
+  setGuestAvatar: (url: string) => void;
+  refreshGuestAvatar: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const GUEST_AVATAR_KEY = 'guest_avatar_url';
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [guestAvatarUrl, setGuestAvatarUrl] = useState<string | null>(() => 
+    localStorage.getItem(GUEST_AVATAR_KEY)
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -111,7 +118,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const getUserAvatar = (): string | null => {
-    return user?.user_metadata?.avatar_url || null;
+    if (user?.user_metadata?.avatar_url) {
+      return user.user_metadata.avatar_url;
+    }
+    return guestAvatarUrl;
+  };
+
+  const setGuestAvatar = (url: string) => {
+    localStorage.setItem(GUEST_AVATAR_KEY, url);
+    setGuestAvatarUrl(url);
+  };
+
+  const refreshGuestAvatar = () => {
+    setGuestAvatarUrl(localStorage.getItem(GUEST_AVATAR_KEY));
   };
 
   const isAuthenticated = !!session;
@@ -127,6 +146,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       getUserId,
       getUserEmail,
       getUserAvatar,
+      setGuestAvatar,
+      refreshGuestAvatar,
     }}>
       {children}
     </AuthContext.Provider>
