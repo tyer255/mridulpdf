@@ -41,7 +41,7 @@ const Header = () => {
               </div>
             )}
             <span className="text-xs font-medium text-muted-foreground max-w-[80px] truncate">
-              {user ? displayName.split(' ')[0] : `${displayId}...`}
+              {user ? displayName.split(' ')[0] : (displayName !== 'Guest User' ? displayName : `${displayId}...`)}
             </span>
           </Button>
         </Link>
