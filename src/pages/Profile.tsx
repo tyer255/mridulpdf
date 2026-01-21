@@ -1,18 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Save, LogOut, Bell, Palette, User, FileText, ChevronRight, Shield, Mail, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Save, LogOut, Bell, Palette, User, FileText, ChevronRight, Shield, Mail, CheckCircle, Camera, Loader2 } from 'lucide-react';
 import { mockStorage } from '@/lib/mockStorage';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 const Profile = () => {
-  const { user, loading, isAuthenticated, signOut, getUserDisplayName, getUserId, getUserEmail, getUserAvatar } = useAuth();
+  const { loading, isAuthenticated, signOut, getUserDisplayName, getUserId, getUserEmail, getUserAvatar, setGuestAvatar } = useAuth();
   const [displayName, setDisplayName] = useState('');
   const [totalPDFs, setTotalPDFs] = useState(0);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -65,6 +68,80 @@ const Profile = () => {
     navigate('/login');
   };
 
+  const handleAvatarClick = () => {
+    if (!isAuthenticated) {
+      fileInputRef.current?.click();
+    }
+  };
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !userId) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid file",
+        description: "Please select an image file",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please select an image under 5MB",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setUploadingAvatar(true);
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${userId}/avatar.${fileExt}`;
+
+      // Upload to Supabase storage
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      // Add cache-busting query param
+      const avatarUrl = `${publicUrl}?t=${Date.now()}`;
+      
+      // Save to localStorage and update context
+      setGuestAvatar(avatarUrl);
+
+      toast({
+        title: "Success!",
+        description: "Profile photo updated successfully"
+      });
+    } catch (error) {
+      console.error('Avatar upload error:', error);
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload profile photo",
+        variant: "destructive"
+      });
+    } finally {
+      setUploadingAvatar(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen min-h-[100dvh] bg-background flex items-center justify-center">
@@ -94,17 +171,57 @@ const Profile = () => {
           <Card className="border-border/50 overflow-hidden">
             <div className="h-20 gradient-primary" />
             <div className="relative px-6 pb-6">
-              {avatar ? (
-                <img 
-                  src={avatar} 
-                  alt={displayName}
-                  className="w-20 h-20 rounded-2xl object-cover border-4 border-card shadow-lg -mt-10 mb-4"
-                />
-              ) : (
-                <div className="w-20 h-20 rounded-2xl bg-card border-4 border-card shadow-lg flex items-center justify-center -mt-10 mb-4">
-                  <User className="w-10 h-10 text-primary" />
-                </div>
-              )}
+              {/* Hidden file input for avatar upload */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleAvatarUpload}
+                accept="image/*"
+                className="hidden"
+              />
+              
+              {/* Avatar with upload overlay for guests */}
+              <div 
+                className={`relative -mt-10 mb-4 ${!isAuthenticated ? 'cursor-pointer group' : ''}`}
+                onClick={handleAvatarClick}
+              >
+                {avatar ? (
+                  <img 
+                    src={avatar} 
+                    alt={displayName}
+                    className="w-20 h-20 rounded-2xl object-cover border-4 border-card shadow-lg"
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-2xl bg-card border-4 border-card shadow-lg flex items-center justify-center">
+                    <User className="w-10 h-10 text-primary" />
+                  </div>
+                )}
+                
+                {/* Upload overlay for guests */}
+                {!isAuthenticated && (
+                  <div className="absolute inset-0 rounded-2xl bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    {uploadingAvatar ? (
+                      <Loader2 className="w-6 h-6 text-white animate-spin" />
+                    ) : (
+                      <Camera className="w-6 h-6 text-white" />
+                    )}
+                  </div>
+                )}
+                
+                {/* Always visible camera badge for guests */}
+                {!isAuthenticated && !uploadingAvatar && (
+                  <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-primary flex items-center justify-center border-2 border-card">
+                    <Camera className="w-3.5 h-3.5 text-white" />
+                  </div>
+                )}
+                
+                {/* Loading indicator */}
+                {uploadingAvatar && (
+                  <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-primary flex items-center justify-center border-2 border-card">
+                    <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
+                  </div>
+                )}
+              </div>
               
               <div className="space-y-4">
                 {/* Google Auth Status */}
