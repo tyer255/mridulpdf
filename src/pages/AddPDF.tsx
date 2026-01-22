@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Camera, Upload, ScanText, ArrowRight, Sparkles, Zap } from 'lucide-react';
+import { Camera, Upload, ScanText, ArrowRight, Sparkles, Zap, FileDown } from 'lucide-react';
 import Header from '@/components/Header';
 
 const AddPDF = () => {
@@ -24,6 +24,13 @@ const AddPDF = () => {
       description: 'Convert handwriting into editable text with AI',
       path: '/ocr',
       badge: 'AI',
+    },
+    {
+      icon: FileDown,
+      title: 'Compress PDF',
+      description: 'Reduce PDF file size without losing quality',
+      path: '/compress',
+      badge: 'NEW',
     },
   ];
 
