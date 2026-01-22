@@ -1,22 +1,101 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// Allowed origins for CORS
+const allowedOrigins = [
+  'https://mridulpdf.lovable.app',
+  'https://id-preview--7f8e89ff-e9ec-4537-b519-88a84e118974.lovable.app',
+  'http://localhost:5173',
+  'http://localhost:4173',
+  'http://localhost:8080'
+];
+
+function getCorsHeaders(origin: string | null): Record<string, string> {
+  const isAllowed = origin && allowedOrigins.some(allowed => origin.startsWith(allowed.replace(/\/$/, '')));
+  return {
+    'Access-Control-Allow-Origin': isAllowed ? origin : allowedOrigins[0],
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  };
+}
 
 serve(async (req) => {
+  const origin = req.headers.get('Origin');
+  const corsHeaders = getCorsHeaders(origin);
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Verify authentication
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify JWT token using Supabase
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid authentication token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Parse and validate request body
     const { image } = await req.json();
+    
+    // Validate image format and size
+    if (!image || typeof image !== 'string') {
+      return new Response(
+        JSON.stringify({ error: 'Invalid image data' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!image.startsWith('data:image/')) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid image format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Limit size (~7.5MB actual from base64)
+    if (image.length > 10 * 1024 * 1024) {
+      return new Response(
+        JSON.stringify({ error: 'Image too large. Maximum size is 7.5MB.' }),
+        { status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
     if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+      console.error('LOVABLE_API_KEY not configured');
+      return new Response(
+        JSON.stringify({ error: 'Service configuration error' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
+
+    // Log request for monitoring (without sensitive data)
+    console.log({
+      timestamp: new Date().toISOString(),
+      userId: user.id,
+      action: 'ocr_request',
+      imageSizeKB: Math.round(image.length / 1024)
+    });
 
     const systemPrompt = `You are an expert OCR system with NATIVE Hindi (Devanagari) and multilingual support. You MUST extract text using proper Unicode characters.
 
@@ -162,7 +241,10 @@ Return ONLY the extracted text, nothing else.`;
         );
       }
       
-      throw new Error('Failed to process image');
+      return new Response(
+        JSON.stringify({ error: 'Failed to process image' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const data = await response.json();
@@ -174,9 +256,8 @@ Return ONLY the extracted text, nothing else.`;
     );
   } catch (error) {
     console.error('OCR Error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Failed to process image';
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: 'Failed to process image' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
