@@ -141,7 +141,7 @@ const HandwritingOCR = () => {
         videoRef.current.srcObject = stream;
         setCameraActive(true);
       }
-    } catch (error) {
+    } catch (_error) {
       toast({ title: "Camera Error", description: "Could not access camera", variant: "destructive" });
     }
   };
@@ -247,7 +247,7 @@ const HandwritingOCR = () => {
     });
   };
 
-  // Process OCR with Lovable AI - returns progress updates
+  // Process OCR with Lovable AI - returns progress updates (optimized for speed)
   const processOCR = async (
     imageUrl: string, 
     onProgress: (progress: number, message: string) => void
@@ -255,20 +255,14 @@ const HandwritingOCR = () => {
     try {
       // Phase 1: Preprocessing (0-20%)
       onProgress(0, 'Preparing image...');
-      await new Promise(r => setTimeout(r, 100));
       onProgress(5, 'Denoising scan...');
       
       const processedImage = await preprocessImage(imageUrl);
       
-      onProgress(12, 'Binarizing handwriting...');
-      await new Promise(r => setTimeout(r, 150));
-      onProgress(18, 'Sharpening edges...');
-      await new Promise(r => setTimeout(r, 100));
+      onProgress(15, 'Sharpening edges...');
 
       // Phase 2: OCR Processing (20-75%)
-      onProgress(22, 'Detecting layout...');
-      await new Promise(r => setTimeout(r, 100));
-      onProgress(28, 'Extracting Hindi text...');
+      onProgress(20, 'Extracting text...');
       
       const { data, error } = await supabase.functions.invoke('ocr-handwriting', {
         body: { image: processedImage },
@@ -280,12 +274,7 @@ const HandwritingOCR = () => {
       if (error) throw error;
 
       // Phase 3: Post-processing (75-100%)
-      onProgress(76, 'Interpreting columns...');
-      await new Promise(r => setTimeout(r, 150));
-      onProgress(84, 'Formatting tables...');
-      await new Promise(r => setTimeout(r, 150));
-      onProgress(92, 'Validating Unicode...');
-      await new Promise(r => setTimeout(r, 100));
+      onProgress(80, 'Formatting output...');
       onProgress(100, 'Complete');
 
       return { success: true, text: data.text || '' };
@@ -295,37 +284,6 @@ const HandwritingOCR = () => {
     }
   };
 
-  // Smooth progress animation
-  const animateProgress = useCallback((
-    from: number, 
-    to: number, 
-    duration: number,
-    onUpdate: (value: number) => void
-  ): Promise<void> => {
-    return new Promise(resolve => {
-      const startTime = performance.now();
-      const diff = to - from;
-      
-      const animate = (currentTime: number) => {
-        const elapsed = currentTime - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        
-        // Ease-out cubic for smooth deceleration
-        const eased = 1 - Math.pow(1 - progress, 3);
-        const currentValue = Math.round(from + diff * eased);
-        
-        onUpdate(currentValue);
-        
-        if (progress < 1) {
-          requestAnimationFrame(animate);
-        } else {
-          resolve();
-        }
-      };
-      
-      requestAnimationFrame(animate);
-    });
-  }, []);
 
   // Start scanning process
   const startScanning = async () => {
@@ -364,24 +322,13 @@ const HandwritingOCR = () => {
         isProcessing: true
       }));
 
-      let lastProgress = 0;
-      
-      // Process with progress updates
-      const result = await processOCR(images[i], async (progress, message) => {
-        // Animate smoothly between progress points
-        await animateProgress(lastProgress, progress, 150, (val) => {
-          setScanStatus(prev => ({
-            ...prev,
-            progress: val,
-            message: message
-          }));
-        });
-        lastProgress = progress;
-
-        // Voice announcements at key points
-        if (progress === 25 || progress === 50 || progress === 75) {
-          speak(`${progress} percent`);
-        }
+      // Process with progress updates (faster animation)
+      const result = await processOCR(images[i], (progress, message) => {
+        setScanStatus(prev => ({
+          ...prev,
+          progress,
+          message
+        }));
       });
 
       if (result.success) {
@@ -409,10 +356,10 @@ const HandwritingOCR = () => {
         });
       }
 
-      // Transition to next page
+      // Transition to next page (reduced delay)
       if (i < images.length - 1) {
         setIsTransitioning(true);
-        await new Promise(r => setTimeout(r, 600));
+        await new Promise(r => setTimeout(r, 200));
       }
     }
 
@@ -426,8 +373,8 @@ const HandwritingOCR = () => {
       isProcessing: false
     }));
     
-    speak("All pages scanned successfully");
-    await new Promise(r => setTimeout(r, 800));
+    speak("All pages scanned");
+    await new Promise(r => setTimeout(r, 300));
     setStep('results');
   };
 

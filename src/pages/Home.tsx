@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, memo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { mockStorage } from '@/lib/mockStorage';
 import { PDFDocument, PDFTag } from '@/types/pdf';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileText, Clock, RefreshCw, Trash2, Globe, Sparkles } from 'lucide-react';
+import { FileText, Clock, RefreshCw, Trash2, Globe } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import SearchBar from '@/components/SearchBar';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +24,92 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
+// Memoized PDF card for better performance
+const PDFCard = memo(({ 
+  pdf, 
+  currentUserId, 
+  onSelect, 
+  onDelete, 
+  formatDate 
+}: { 
+  pdf: PDFDocument; 
+  currentUserId: string | null; 
+  onSelect: (pdf: PDFDocument) => void; 
+  onDelete: (id: string) => void;
+  formatDate: (timestamp: number) => string;
+}) => (
+  <Card 
+    className="group p-4 hover-lift cursor-pointer border-border/50 hover:border-primary/30 transition-all duration-200"
+    onClick={() => onSelect(pdf)}
+  >
+    <div className="flex gap-3">
+      {pdf.thumbnailUrl ? (
+        <div className="flex-shrink-0 relative overflow-hidden rounded-lg">
+          <img
+            src={pdf.thumbnailUrl}
+            alt="PDF preview"
+            className="w-16 h-20 object-cover"
+            loading="lazy"
+            decoding="async"
+          />
+        </div>
+      ) : (
+        <div className="w-16 h-20 rounded-lg bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center flex-shrink-0">
+          <FileText className="w-6 h-6 text-primary" />
+        </div>
+      )}
+      
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between mb-2">
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-card-foreground truncate mb-1 group-hover:text-primary transition-colors">
+              {pdf.name}
+            </h3>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+              <Clock className="w-3 h-3" />
+              <span>{formatDate(pdf.timestamp)}</span>
+              {pdf.pageCount && (
+                <>
+                  <span className="text-border">•</span>
+                  <span>{pdf.pageCount} pages</span>
+                </>
+              )}
+            </div>
+            {pdf.tags && pdf.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {pdf.tags.slice(0, 3).map(tag => (
+                  <Badge key={tag} variant="tag" className="text-[10px] px-2 py-0.5">
+                    {tag}
+                  </Badge>
+                ))}
+                {pdf.tags.length > 3 && (
+                  <Badge variant="outline" className="text-[10px] px-2 py-0.5">
+                    +{pdf.tags.length - 3}
+                  </Badge>
+                )}
+              </div>
+            )}
+          </div>
+          
+          {currentUserId === pdf.userId && (
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(pdf.id);
+              }}
+              className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors ml-2"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  </Card>
+));
 
 const Home = () => {
   const [worldPDFs, setWorldPDFs] = useState<PDFDocument[]>([]);
@@ -76,7 +162,7 @@ const Home = () => {
     }
   };
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadWorldPDFs();
     setRefreshing(false);
@@ -84,23 +170,23 @@ const Home = () => {
       title: "Refreshed",
       description: "World feed updated",
     });
-  };
+  }, []);
 
-  const handleSearch = async (query: string, tags: PDFTag[]) => {
+  const handleSearch = useCallback(async (query: string, tags: PDFTag[]) => {
     try {
       const results = await mockStorage.searchWorldPDFs(query, tags);
       setFilteredPDFs(results);
-    } catch (error) {
-      console.error('Error searching world PDFs:', error);
+    } catch (_error) {
+      console.error('Error searching world PDFs:', _error);
       toast({
         title: "Error",
         description: "Failed to search world PDFs",
         variant: "destructive"
       });
     }
-  };
+  }, []);
 
-  const handleDownload = async (pdf: PDFDocument) => {
+  const handleDownload = useCallback(async (pdf: PDFDocument) => {
     try {
       let downloadUrl = pdf.downloadUrl;
       if (pdf.visibility === 'world' && !downloadUrl) {
@@ -122,17 +208,17 @@ const Home = () => {
       toast({
         title: "✅ PDF downloaded successfully",
       });
-    } catch (error) {
-      console.error('Download error:', error);
+    } catch (_error) {
+      console.error('Download error:', _error);
       toast({
         title: "Error",
         description: "Failed to download PDF",
         variant: "destructive"
       });
     }
-  };
+  }, []);
 
-  const handleDelete = async (pdfId: string) => {
+  const handleDelete = useCallback(async (pdfId: string) => {
     try {
       await mockStorage.deletePDF(pdfId, 'world');
       await loadWorldPDFs();
@@ -140,8 +226,8 @@ const Home = () => {
         title: "Success",
         description: "PDF deleted successfully",
       });
-    } catch (error) {
-      console.error('Delete error:', error);
+    } catch (_error) {
+      console.error('Delete error:', _error);
       toast({
         title: "Error",
         description: "Failed to delete PDF",
@@ -149,15 +235,23 @@ const Home = () => {
       });
     }
     setDeleteId(null);
-  };
+  }, []);
 
-  const formatDate = (timestamp: number) => {
+  const handleSelectPDF = useCallback((pdf: PDFDocument) => {
+    setSelectedPDF(pdf);
+  }, []);
+
+  const handleSetDeleteId = useCallback((id: string) => {
+    setDeleteId(id);
+  }, []);
+
+  const formatDateMemo = useCallback((timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric'
     });
-  };
+  }, []);
 
   return (
     <div className="min-h-screen min-h-[100dvh] bg-background pb-24 safe-top overflow-x-hidden">
@@ -223,79 +317,15 @@ const Home = () => {
           </div>
         ) : (
           <div className="space-y-3">
-            {filteredPDFs.map((pdf, index) => (
-              <Card 
-                key={pdf.id} 
-                className="group p-4 hover-lift cursor-pointer border-border/50 hover:border-primary/30 transition-all duration-300"
-                style={{ animationDelay: `${index * 50}ms` }}
-                onClick={() => setSelectedPDF(pdf)}
-              >
-                <div className="flex gap-3">
-                  {pdf.thumbnailUrl ? (
-                    <div className="flex-shrink-0 relative overflow-hidden rounded-lg">
-                      <img
-                        src={pdf.thumbnailUrl}
-                        alt="PDF preview"
-                        className="w-16 h-20 object-cover transition-transform duration-300 group-hover:scale-105"
-                        loading="lazy"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </div>
-                  ) : (
-                    <div className="w-16 h-20 rounded-lg bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center flex-shrink-0">
-                      <FileText className="w-6 h-6 text-primary" />
-                    </div>
-                  )}
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-card-foreground truncate mb-1 group-hover:text-primary transition-colors">
-                          {pdf.name}
-                        </h3>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                          <Clock className="w-3 h-3" />
-                          <span>{formatDate(pdf.timestamp)}</span>
-                          {pdf.pageCount && (
-                            <>
-                              <span className="text-border">•</span>
-                              <span>{pdf.pageCount} pages</span>
-                            </>
-                          )}
-                        </div>
-                        {pdf.tags && pdf.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5">
-                            {pdf.tags.slice(0, 3).map(tag => (
-                              <Badge key={tag} variant="tag" className="text-[10px] px-2 py-0.5">
-                                {tag}
-                              </Badge>
-                            ))}
-                            {pdf.tags.length > 3 && (
-                              <Badge variant="outline" className="text-[10px] px-2 py-0.5">
-                                +{pdf.tags.length - 3}
-                              </Badge>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      
-                      {currentUserId === pdf.userId && (
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteId(pdf.id);
-                          }}
-                          className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors ml-2"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </Card>
+            {filteredPDFs.map((pdf) => (
+              <PDFCard
+                key={pdf.id}
+                pdf={pdf}
+                currentUserId={currentUserId}
+                onSelect={handleSelectPDF}
+                onDelete={handleSetDeleteId}
+                formatDate={formatDateMemo}
+              />
             ))}
           </div>
         )}
