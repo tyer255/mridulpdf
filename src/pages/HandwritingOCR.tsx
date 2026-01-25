@@ -271,7 +271,10 @@ const HandwritingOCR = () => {
       onProgress(28, 'Extracting Hindi text...');
       
       const { data, error } = await supabase.functions.invoke('ocr-handwriting', {
-        body: { image: processedImage }
+        body: { image: processedImage },
+        headers: {
+          'X-Guest-ID': userId || ''
+        }
       });
 
       if (error) throw error;
