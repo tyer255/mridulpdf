@@ -28,29 +28,38 @@ serve(async (req) => {
   }
 
   try {
-    // Verify authentication
+    // Get authentication header (optional for guest users)
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Authentication required' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Verify JWT token using Supabase
+    const guestId = req.headers.get('X-Guest-ID');
+    
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
-    });
+    let userId: string | null = null;
+    let _isGuest = false;
+    
+    // Try to authenticate if token provided
+    if (authHeader && authHeader !== 'Bearer null' && authHeader !== 'Bearer undefined') {
+      const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } }
+      });
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid authentication token' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (!authError && user) {
+        userId = user.id;
+      }
+    }
+    
+    // If not authenticated, allow as guest with guest ID
+    if (!userId) {
+      if (!guestId || guestId.length < 10) {
+        return new Response(
+          JSON.stringify({ error: 'Guest ID required for unauthenticated users' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      userId = `guest_${guestId}`;
+      _isGuest = true;
     }
 
     // Parse and validate request body
@@ -92,7 +101,7 @@ serve(async (req) => {
     // Log request for monitoring (without sensitive data)
     console.log({
       timestamp: new Date().toISOString(),
-      userId: user.id,
+      userId: userId,
       action: 'ocr_request',
       imageSizeKB: Math.round(image.length / 1024)
     });
