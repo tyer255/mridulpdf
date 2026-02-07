@@ -190,62 +190,55 @@ const HandwritingOCR = () => {
     });
   };
 
-  // Preprocess image for better OCR (denoise, sharpen, binarize)
+  // Preprocess image for better OCR (resize + grayscale + binarize)
+  // NOTE: Keep this lightweight to avoid UI lag on low-end devices.
   const preprocessImage = async (imageUrl: string): Promise<string> => {
-    return new Promise((resolve) => {
-      const img = document.createElement('img');
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          resolve(imageUrl);
-          return;
-        }
+    try {
+      // Yield once to keep UI responsive before heavy work
+      await new Promise<void>((r) => requestAnimationFrame(() => r()));
 
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0);
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
 
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imageData.data;
+      const bitmap = await createImageBitmap(blob);
 
-        // Step 1: Convert to grayscale and enhance contrast
-        for (let i = 0; i < data.length; i += 4) {
-          const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-          // Increase contrast
-          const enhanced = Math.min(255, Math.max(0, (gray - 128) * 1.5 + 128));
-          data[i] = data[i + 1] = data[i + 2] = enhanced;
-        }
+      // Downscale to reduce CPU time (biggest lag source)
+      const maxDim = 1600;
+      const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+      const w = Math.max(1, Math.round(bitmap.width * scale));
+      const h = Math.max(1, Math.round(bitmap.height * scale));
 
-        // Step 2: Apply adaptive thresholding for binarization (simple version)
-        const threshold = 140;
-        for (let i = 0; i < data.length; i += 4) {
-          const val = data[i] < threshold ? 0 : 255;
-          data[i] = data[i + 1] = data[i + 2] = val;
-        }
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
 
-        // Step 3: Simple sharpening using unsharp mask approximation
-        const tempData = new Uint8ClampedArray(data);
-        const w = canvas.width;
-        for (let y = 1; y < canvas.height - 1; y++) {
-          for (let x = 1; x < w - 1; x++) {
-            const idx = (y * w + x) * 4;
-            const blur = (
-              tempData[idx - w * 4] + tempData[idx + w * 4] +
-              tempData[idx - 4] + tempData[idx + 4]
-            ) / 4;
-            const sharp = Math.min(255, Math.max(0, tempData[idx] * 2 - blur * 0.5));
-            data[idx] = data[idx + 1] = data[idx + 2] = sharp;
-          }
-        }
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return imageUrl;
 
-        ctx.putImageData(imageData, 0, 0);
-        resolve(canvas.toDataURL('image/jpeg', 0.95));
-      };
-      img.onerror = () => resolve(imageUrl);
-      img.src = imageUrl;
-    });
+      ctx.drawImage(bitmap, 0, 0, w, h);
+
+      const imageData = ctx.getImageData(0, 0, w, h);
+      const data = imageData.data;
+
+      // Single-pass grayscale + contrast + threshold
+      const threshold = 150;
+      for (let i = 0; i < data.length; i += 4) {
+        const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+        const contrast = Math.min(255, Math.max(0, (gray - 128) * 1.35 + 128));
+        const val = contrast < threshold ? 0 : 255;
+        data[i] = data[i + 1] = data[i + 2] = val;
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+
+      // Lower quality is fine post-binarization and saves bytes/latency
+      return canvas.toDataURL('image/jpeg', 0.85);
+    } catch (e) {
+      console.warn('preprocessImage failed, using original image:', e);
+      return imageUrl;
+    }
   };
+
 
   // Process OCR with Lovable AI - returns progress updates (optimized for speed)
   const processOCR = async (
