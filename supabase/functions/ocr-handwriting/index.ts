@@ -5,16 +5,19 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const allowedOrigins = [
   'https://mridulpdf.lovable.app',
   'https://id-preview--7f8e89ff-e9ec-4537-b519-88a84e118974.lovable.app',
+  // Lovable preview also uses lovableproject.com domain
+  'https://7f8e89ff-e9ec-4537-b519-88a84e118974.lovableproject.com',
   'http://localhost:5173',
   'http://localhost:4173',
   'http://localhost:8080'
 ];
 
+
 function getCorsHeaders(origin: string | null): Record<string, string> {
   const isAllowed = origin && allowedOrigins.some(allowed => origin.startsWith(allowed.replace(/\/$/, '')));
   return {
     'Access-Control-Allow-Origin': isAllowed ? origin : allowedOrigins[0],
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-guest-id',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
   };
 }
