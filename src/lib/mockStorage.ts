@@ -81,24 +81,19 @@ export const mockStorage = {
         pageCount: data.page_count,
       };
     } else {
-      // Save private PDFs to storage as well
+      // Guest/private PDFs: keep everything local to avoid requiring authenticated storage uploads.
+      // This preserves the "no signup required" flow and removes upload failures for guests.
       const pdfId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const pdfPath = `pdfs/${pdf.userId}/${pdfId}.pdf`;
-      const thumbnailPath = pdf.thumbnailUrl ? `thumbnails/${pdf.userId}/${pdfId}.jpg` : undefined;
 
-      await uploadToStorage('pdfs', pdfPath, pdf.downloadUrl);
-      if (pdf.thumbnailUrl && thumbnailPath) {
-        await uploadToStorage('thumbnails', thumbnailPath, pdf.thumbnailUrl);
-      }
-
-      // Store metadata in localStorage with storage paths
       const pdfs = this.getPDFs();
       const newPDF: PDFDocument = {
         ...pdf,
         id: pdfId,
-        downloadUrl: getStorageUrl('pdfs', pdfPath),
-        thumbnailUrl: thumbnailPath ? getStorageUrl('thumbnails', thumbnailPath) : undefined,
+        // Keep data URLs as-is for private PDFs
+        downloadUrl: pdf.downloadUrl,
+        thumbnailUrl: pdf.thumbnailUrl,
       };
+
       pdfs.push(newPDF);
       localStorage.setItem(PDFS_KEY, JSON.stringify(pdfs));
       return newPDF;
@@ -220,24 +215,28 @@ export const mockStorage = {
       const pdf = pdfs.find(p => p.id === pdfId);
       
       if (pdf) {
-        // Extract storage path from URL
-        try {
-          const pdfUrl = new URL(pdf.downloadUrl);
-          const pdfPath = pdfUrl.pathname.split('/storage/v1/object/public/pdfs/')[1];
-          if (pdfPath) {
-            await supabase.storage.from('pdfs').remove([pdfPath]);
+          // Extract storage path from URL (skip if it's a data URL)
+          if (pdf.downloadUrl.startsWith('data:')) {
+            // nothing to delete from storage
+          } else {
+            const pdfUrl = new URL(pdf.downloadUrl);
+            const pdfPath = pdfUrl.pathname.split('/storage/v1/object/public/pdfs/')[1];
+            if (pdfPath) {
+              await supabase.storage.from('pdfs').remove([pdfPath]);
+            }
           }
 
           if (pdf.thumbnailUrl) {
-            const thumbUrl = new URL(pdf.thumbnailUrl);
-            const thumbPath = thumbUrl.pathname.split('/storage/v1/object/public/thumbnails/')[1];
-            if (thumbPath) {
-              await supabase.storage.from('thumbnails').remove([thumbPath]);
+            if (pdf.thumbnailUrl.startsWith('data:')) {
+              // nothing to delete from storage
+            } else {
+              const thumbUrl = new URL(pdf.thumbnailUrl);
+              const thumbPath = thumbUrl.pathname.split('/storage/v1/object/public/thumbnails/')[1];
+              if (thumbPath) {
+                await supabase.storage.from('thumbnails').remove([thumbPath]);
+              }
             }
           }
-        } catch (e) {
-          console.error('Error deleting from storage:', e);
-        }
       }
 
       // Remove from localStorage
