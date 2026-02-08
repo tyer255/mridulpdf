@@ -13,6 +13,7 @@ import { PDFTag } from '@/types/pdf';
 import TagSelector from '@/components/TagSelector';
 import { alertEvent } from '@/lib/preferences';
 import ExitConfirmDialog from '@/components/ExitConfirmDialog';
+import { useAuth } from '@/contexts/AuthContext';
 
 const ImportPDF = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -23,6 +24,7 @@ const ImportPDF = () => {
   const [showExitDialog, setShowExitDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const userId = useAnonymousUser();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -91,6 +93,17 @@ const ImportPDF = () => {
         description: "User ID not found",
         variant: "destructive"
       });
+      return;
+    }
+
+    // Guest users cannot upload to the World feed (backend RLS requires sign-in)
+    if (!isAuthenticated && visibility === 'world') {
+      toast({
+        title: 'World upload requires login',
+        description: 'Guest users can only save PDFs as Private. Please switch to Private.',
+        variant: 'destructive',
+      });
+      setVisibility('private');
       return;
     }
 
@@ -245,9 +258,13 @@ const ImportPDF = () => {
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="world" id="world" />
-                    <Label htmlFor="world" className="font-normal cursor-pointer">
+                    <RadioGroupItem value="world" id="world" disabled={!isAuthenticated} />
+                    <Label
+                      htmlFor="world"
+                      className={`font-normal cursor-pointer ${!isAuthenticated ? 'opacity-60 cursor-not-allowed' : ''}`}
+                    >
                       World (Visible to everyone)
+                      {!isAuthenticated ? ' — login required' : ''}
                     </Label>
                   </div>
                 </RadioGroup>

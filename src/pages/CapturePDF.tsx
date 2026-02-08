@@ -20,6 +20,7 @@ import ImageFilterModal from '@/components/ImageFilterModal';
 import heic2any from 'heic2any';
 import { alertEvent } from '@/lib/preferences';
 import ExitConfirmDialog from '@/components/ExitConfirmDialog';
+import { useAuth } from '@/contexts/AuthContext';
 
 const CapturePDF = () => {
   const [images, setImages] = useState<string[]>([]);
@@ -35,6 +36,7 @@ const CapturePDF = () => {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const userId = useAnonymousUser();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -260,6 +262,17 @@ const handleGallerySelection = async (e: React.ChangeEvent<HTMLInputElement>) =>
         description: "User ID not found",
         variant: "destructive"
       });
+      return;
+    }
+
+    // Guest users cannot upload to the World feed (backend RLS requires sign-in)
+    if (!isAuthenticated && visibility === 'world') {
+      toast({
+        title: 'World upload requires login',
+        description: 'Guest users can only save PDFs as Private. Please switch to Private.',
+        variant: 'destructive',
+      });
+      setVisibility('private');
       return;
     }
 
@@ -492,9 +505,13 @@ const handleGallerySelection = async (e: React.ChangeEvent<HTMLInputElement>) =>
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="world" id="world" />
-                    <Label htmlFor="world" className="font-normal cursor-pointer">
+                    <RadioGroupItem value="world" id="world" disabled={!isAuthenticated} />
+                    <Label
+                      htmlFor="world"
+                      className={`font-normal cursor-pointer ${!isAuthenticated ? 'opacity-60 cursor-not-allowed' : ''}`}
+                    >
                       World (Visible to everyone)
+                      {!isAuthenticated ? ' — login required' : ''}
                     </Label>
                   </div>
                 </RadioGroup>
