@@ -37,67 +37,80 @@ function getStorageUrl(bucket: string, path: string): string {
 
 export const mockStorage = {
   async savePDF(pdf: Omit<PDFDocument, 'id'>, displayName?: string): Promise<PDFDocument> {
-    if (pdf.visibility === 'world') {
-      const pdfId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Private PDFs or any guest user PDFs: save entirely in localStorage
+    // This is the primary path for guest users who cannot write to Supabase storage
+    if (pdf.visibility === 'private') {
+      const pdfId = `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
-      // Upload PDF and thumbnail to storage
-      const pdfPath = `pdfs/${pdf.userId}/${pdfId}.pdf`;
-      const thumbnailPath = pdf.thumbnailUrl ? `thumbnails/${pdf.userId}/${pdfId}.jpg` : undefined;
-
-      await uploadToStorage('pdfs', pdfPath, pdf.downloadUrl);
-      if (pdf.thumbnailUrl && thumbnailPath) {
-        await uploadToStorage('thumbnails', thumbnailPath, pdf.thumbnailUrl);
-      }
-
-      // Save metadata to database with storage paths
-      const { data, error } = await supabase
-        .from('world_pdfs')
-        .insert({
-          name: pdf.name,
-          user_id: pdf.userId,
-          timestamp: pdf.timestamp,
-          download_url: pdfPath,
-          thumbnail_url: thumbnailPath,
-          size: pdf.size,
-          tags: pdf.tags,
-          page_count: pdf.pageCount,
-          display_name: displayName || 'Guest User',
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      return {
-        id: data.id,
-        name: data.name,
-        userId: data.user_id,
-        timestamp: data.timestamp,
-        visibility: 'world',
-        downloadUrl: getStorageUrl('pdfs', data.download_url),
-        thumbnailUrl: data.thumbnail_url ? getStorageUrl('thumbnails', data.thumbnail_url) : undefined,
-        size: data.size,
-        tags: data.tags as PDFTag[],
-        pageCount: data.page_count,
-      };
-    } else {
-      // Guest/private PDFs: keep everything local to avoid requiring authenticated storage uploads.
-      // This preserves the "no signup required" flow and removes upload failures for guests.
-      const pdfId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
       const pdfs = this.getPDFs();
       const newPDF: PDFDocument = {
         ...pdf,
         id: pdfId,
-        // Keep data URLs as-is for private PDFs
         downloadUrl: pdf.downloadUrl,
         thumbnailUrl: pdf.thumbnailUrl,
       };
 
       pdfs.push(newPDF);
-      localStorage.setItem(PDFS_KEY, JSON.stringify(pdfs));
+      
+      try {
+        localStorage.setItem(PDFS_KEY, JSON.stringify(pdfs));
+      } catch (storageError: any) {
+        // localStorage might be full - try to save without thumbnail
+        if (storageError.name === 'QuotaExceededError') {
+          newPDF.thumbnailUrl = undefined;
+          const reducedPdfs = [...pdfs.slice(0, -1), newPDF];
+          localStorage.setItem(PDFS_KEY, JSON.stringify(reducedPdfs));
+        } else {
+          throw storageError;
+        }
+      }
+      
       return newPDF;
     }
+    
+    // World visibility: requires authenticated user with Supabase storage access
+    const pdfId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Upload PDF and thumbnail to storage
+    const pdfPath = `pdfs/${pdf.userId}/${pdfId}.pdf`;
+    const thumbnailPath = pdf.thumbnailUrl ? `thumbnails/${pdf.userId}/${pdfId}.jpg` : undefined;
+
+    await uploadToStorage('pdfs', pdfPath, pdf.downloadUrl);
+    if (pdf.thumbnailUrl && thumbnailPath) {
+      await uploadToStorage('thumbnails', thumbnailPath, pdf.thumbnailUrl);
+    }
+
+    // Save metadata to database with storage paths
+    const { data, error } = await supabase
+      .from('world_pdfs')
+      .insert({
+        name: pdf.name,
+        user_id: pdf.userId,
+        timestamp: pdf.timestamp,
+        download_url: pdfPath,
+        thumbnail_url: thumbnailPath,
+        size: pdf.size,
+        tags: pdf.tags,
+        page_count: pdf.pageCount,
+        display_name: displayName || 'Guest User',
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return {
+      id: data.id,
+      name: data.name,
+      userId: data.user_id,
+      timestamp: data.timestamp,
+      visibility: 'world',
+      downloadUrl: getStorageUrl('pdfs', data.download_url),
+      thumbnailUrl: data.thumbnail_url ? getStorageUrl('thumbnails', data.thumbnail_url) : undefined,
+      size: data.size,
+      tags: data.tags as PDFTag[],
+      pageCount: data.page_count,
+    };
   },
 
   getPDFs(): PDFDocument[] {
