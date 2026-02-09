@@ -35,10 +35,54 @@ function getStorageUrl(bucket: string, path: string): string {
   return data.publicUrl;
 }
 
+// Upload to world via edge function (works for both guests and authenticated users)
+async function uploadWorldPdfViaEdge(
+  pdf: Omit<PDFDocument, 'id'>,
+  displayName: string
+): Promise<PDFDocument> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const guestId = localStorage.getItem('anonymous_user_id');
+  
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  
+  if (session?.access_token) {
+    headers['Authorization'] = `Bearer ${session.access_token}`;
+  }
+  if (guestId) {
+    headers['X-Guest-ID'] = guestId;
+  }
+  headers['X-Display-Name'] = displayName;
+  
+  const response = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-world-pdf`,
+    {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        name: pdf.name,
+        pdfDataUrl: pdf.downloadUrl,
+        thumbnailDataUrl: pdf.thumbnailUrl,
+        size: pdf.size,
+        tags: pdf.tags,
+        pageCount: pdf.pageCount,
+      }),
+    }
+  );
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Failed to upload PDF to World');
+  }
+  
+  const result = await response.json();
+  return result.pdf as PDFDocument;
+}
+
 export const mockStorage = {
   async savePDF(pdf: Omit<PDFDocument, 'id'>, displayName?: string): Promise<PDFDocument> {
-    // Private PDFs or any guest user PDFs: save entirely in localStorage
-    // This is the primary path for guest users who cannot write to Supabase storage
+    // Private PDFs: save entirely in localStorage
     if (pdf.visibility === 'private') {
       const pdfId = `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
@@ -68,49 +112,8 @@ export const mockStorage = {
       return newPDF;
     }
     
-    // World visibility: requires authenticated user with Supabase storage access
-    const pdfId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    // Upload PDF and thumbnail to storage
-    const pdfPath = `pdfs/${pdf.userId}/${pdfId}.pdf`;
-    const thumbnailPath = pdf.thumbnailUrl ? `thumbnails/${pdf.userId}/${pdfId}.jpg` : undefined;
-
-    await uploadToStorage('pdfs', pdfPath, pdf.downloadUrl);
-    if (pdf.thumbnailUrl && thumbnailPath) {
-      await uploadToStorage('thumbnails', thumbnailPath, pdf.thumbnailUrl);
-    }
-
-    // Save metadata to database with storage paths
-    const { data, error } = await supabase
-      .from('world_pdfs')
-      .insert({
-        name: pdf.name,
-        user_id: pdf.userId,
-        timestamp: pdf.timestamp,
-        download_url: pdfPath,
-        thumbnail_url: thumbnailPath,
-        size: pdf.size,
-        tags: pdf.tags,
-        page_count: pdf.pageCount,
-        display_name: displayName || 'Guest User',
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    return {
-      id: data.id,
-      name: data.name,
-      userId: data.user_id,
-      timestamp: data.timestamp,
-      visibility: 'world',
-      downloadUrl: getStorageUrl('pdfs', data.download_url),
-      thumbnailUrl: data.thumbnail_url ? getStorageUrl('thumbnails', data.thumbnail_url) : undefined,
-      size: data.size,
-      tags: data.tags as PDFTag[],
-      pageCount: data.page_count,
-    };
+    // World visibility: use edge function for both guests and authenticated users
+    return uploadWorldPdfViaEdge(pdf, displayName || 'Guest User');
   },
 
   getPDFs(): PDFDocument[] {
