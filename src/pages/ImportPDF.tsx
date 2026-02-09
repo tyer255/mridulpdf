@@ -96,16 +96,7 @@ const ImportPDF = () => {
       return;
     }
 
-    // Guest users cannot upload to the World feed (backend RLS requires sign-in)
-    if (!isAuthenticated && visibility === 'world') {
-      toast({
-        title: 'World upload requires login',
-        description: 'Guest users can only save PDFs as Private. Please switch to Private.',
-        variant: 'destructive',
-      });
-      setVisibility('private');
-      return;
-    }
+    // World uploads now use edge function that supports both guests and authenticated users
 
     setUploading(true);
 
@@ -258,13 +249,9 @@ const ImportPDF = () => {
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="world" id="world" disabled={!isAuthenticated} />
-                    <Label
-                      htmlFor="world"
-                      className={`font-normal cursor-pointer ${!isAuthenticated ? 'opacity-60 cursor-not-allowed' : ''}`}
-                    >
+                    <RadioGroupItem value="world" id="world" />
+                    <Label htmlFor="world" className="font-normal cursor-pointer">
                       World (Visible to everyone)
-                      {!isAuthenticated ? ' — login required' : ''}
                     </Label>
                   </div>
                 </RadioGroup>
