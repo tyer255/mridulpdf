@@ -65,7 +65,7 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { name, pdfDataUrl, thumbnailDataUrl, size, tags, pageCount } = await req.json();
+    const { name, pdfDataUrl, thumbnailDataUrl, size, tags, pageCount, isOCR } = await req.json();
     
     // Validate required fields
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -152,6 +152,7 @@ serve(async (req) => {
         tags: tags || [],
         page_count: pageCount || null,
         display_name: userDisplayName,
+        is_ocr: isOCR || false,
       })
       .select()
       .single();

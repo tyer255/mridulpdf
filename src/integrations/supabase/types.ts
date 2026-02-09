@@ -20,6 +20,7 @@ export type Database = {
           display_name: string | null
           download_url: string
           id: string
+          is_ocr: boolean | null
           name: string
           page_count: number | null
           size: number | null
@@ -33,6 +34,7 @@ export type Database = {
           display_name?: string | null
           download_url: string
           id?: string
+          is_ocr?: boolean | null
           name: string
           page_count?: number | null
           size?: number | null
@@ -46,6 +48,7 @@ export type Database = {
           display_name?: string | null
           download_url?: string
           id?: string
+          is_ocr?: boolean | null
           name?: string
           page_count?: number | null
           size?: number | null

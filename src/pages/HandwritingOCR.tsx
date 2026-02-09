@@ -493,7 +493,10 @@ const HandwritingOCR = () => {
 
       const fileName = pdfName.trim() || `OCR_${new Date().toLocaleDateString().replace(/\//g, '-')}_${Date.now()}`;
       
-      await mockStorage.savePDF({
+      // Combine all extracted text for AI context
+      const fullOCRText = extractedPages.map(p => p.text).join('\n\n--- Page Break ---\n\n');
+      
+      const savedPdf = await mockStorage.savePDF({
         name: fileName,
         userId: userId || 'anonymous',
         timestamp: Date.now(),
@@ -502,8 +505,16 @@ const HandwritingOCR = () => {
         visibility,
         tags: selectedTags,
         pageCount: extractedPages.length,
-        size: pdfBlob.size
+        size: pdfBlob.size,
+        isOCR: true,
       });
+
+      // Store OCR text in localStorage for AI chat
+      try {
+        localStorage.setItem(`ocr_text_${savedPdf.id}`, fullOCRText);
+      } catch (e) {
+        console.warn('Could not save OCR text for AI:', e);
+      }
 
       toast({ title: "PDF created successfully" });
       speak("PDF created successfully");

@@ -8,7 +8,9 @@ import {
   Clock, 
   User, 
   Share2, 
-  FileStack
+  FileStack,
+  Sparkles,
+  Loader2
 } from 'lucide-react';
 import {
   Sheet,
@@ -17,6 +19,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import SharePanel from './SharePanel';
+import AskAIChat from './AskAIChat';
 import { mockStorage } from '@/lib/mockStorage';
 
 interface PDFDetailsSheetProps {
@@ -36,18 +39,19 @@ const PDFDetailsSheet = ({
 }: PDFDetailsSheetProps) => {
   const [showSharePanel, setShowSharePanel] = useState(false);
   const [shareUrl, setShareUrl] = useState<string>('');
+  const [showAIChat, setShowAIChat] = useState(false);
+  const [pdfContext, setPdfContext] = useState<string>('');
+  const [loadingContext, setLoadingContext] = useState(false);
 
   // Fetch the actual download URL when sheet opens
   useEffect(() => {
     const fetchShareUrl = async () => {
       if (pdf && open) {
         try {
-          // Get the actual public storage URL for sharing
           const downloadUrl = pdf.downloadUrl || await mockStorage.getPDFDownloadUrl(pdf.id);
           setShareUrl(downloadUrl);
         } catch (error) {
           console.error('Error fetching share URL:', error);
-          // Fallback to a generic share message
           setShareUrl(`${window.location.origin}/?search=${encodeURIComponent(pdf.name)}`);
         }
       }
@@ -56,6 +60,8 @@ const PDFDetailsSheet = ({
   }, [pdf, open]);
 
   if (!pdf) return null;
+
+  const isOCR = pdf.isOCR === true;
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('en-US', {
@@ -70,109 +76,157 @@ const PDFDetailsSheet = ({
     onOpenChange(false);
   };
 
+  const handleAskAI = async () => {
+    setLoadingContext(true);
+    try {
+      // Try to get stored OCR text
+      const storedText = localStorage.getItem(`ocr_text_${pdf.id}`);
+      if (storedText) {
+        setPdfContext(storedText);
+        setShowAIChat(true);
+      } else {
+        setPdfContext('(OCR text not available for this document)');
+        setShowAIChat(true);
+      }
+    } catch (error) {
+      console.error('Error loading PDF context:', error);
+    } finally {
+      setLoadingContext(false);
+    }
+  };
+
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent 
-        side="bottom" 
-        className="h-auto max-h-[85vh] rounded-t-3xl bg-card border-t border-border p-0 overflow-hidden"
-      >
-        {/* Handle bar */}
-        <div className="flex justify-center pt-3 pb-2">
-          <div className="w-12 h-1.5 bg-muted rounded-full" />
-        </div>
+    <>
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent 
+          side="bottom" 
+          className="h-auto max-h-[85vh] rounded-t-3xl bg-card border-t border-border p-0 overflow-hidden"
+        >
+          {/* Handle bar */}
+          <div className="flex justify-center pt-3 pb-2">
+            <div className="w-12 h-1.5 bg-muted rounded-full" />
+          </div>
 
-        <div className="px-6 pb-8 overflow-y-auto max-h-[calc(85vh-24px)]">
-          {/* Header Section */}
-          <SheetHeader className="pb-4 border-b border-border">
-            <div className="flex items-start gap-3">
-              <div className="p-3 rounded-xl bg-primary/10">
-                <FileText className="w-8 h-8 text-primary" />
+          <div className="px-6 pb-8 overflow-y-auto max-h-[calc(85vh-24px)]">
+            {/* Header Section */}
+            <SheetHeader className="pb-4 border-b border-border">
+              <div className="flex items-start gap-3">
+                <div className="p-3 rounded-xl bg-primary/10">
+                  <FileText className="w-8 h-8 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0 pr-8">
+                  <SheetTitle className="text-xl font-bold text-foreground text-left leading-tight">
+                    {pdf.name}
+                  </SheetTitle>
+                </div>
               </div>
-              <div className="flex-1 min-w-0 pr-8">
-                <SheetTitle className="text-xl font-bold text-foreground text-left leading-tight">
-                  {pdf.name}
-                </SheetTitle>
-              </div>
-            </div>
-          </SheetHeader>
+            </SheetHeader>
 
-          {/* Metadata Section */}
-          <div className="py-5 border-b border-border space-y-4">
-            {/* Tags */}
-            {pdf.tags && pdf.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {pdf.tags.map(tag => (
-                  <Badge 
-                    key={tag} 
-                    variant="tag" 
-                    className="px-3 py-1.5 text-sm font-medium"
-                  >
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
-            )}
-
-            {/* Date and Page count */}
-            <div className="flex flex-wrap gap-4">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Clock className="w-4 h-4" />
-                <span className="text-sm">{formatDate(pdf.timestamp)}</span>
-              </div>
-              {pdf.pageCount && (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <FileStack className="w-4 h-4" />
-                  <span className="text-sm">{pdf.pageCount} pages</span>
+            {/* Metadata Section */}
+            <div className="py-5 border-b border-border space-y-4">
+              {pdf.tags && pdf.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {pdf.tags.map(tag => (
+                    <Badge 
+                      key={tag} 
+                      variant="tag" 
+                      className="px-3 py-1.5 text-sm font-medium"
+                    >
+                      {tag}
+                    </Badge>
+                  ))}
                 </div>
               )}
-            </div>
-          </div>
 
-          {/* Uploader Information */}
-          <div className="py-5 border-b border-border">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-full bg-muted/30">
-                <User className="w-5 h-5 text-muted-foreground" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Uploaded by</p>
-                <p className="text-sm font-medium text-foreground">
-                  {displayName || 'Guest User'}
-                </p>
+              <div className="flex flex-wrap gap-4">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Clock className="w-4 h-4" />
+                  <span className="text-sm">{formatDate(pdf.timestamp)}</span>
+                </div>
+                {pdf.pageCount && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <FileStack className="w-4 h-4" />
+                    <span className="text-sm">{pdf.pageCount} pages</span>
+                  </div>
+                )}
               </div>
             </div>
-          </div>
 
-          {/* Action Buttons */}
-          <div className="pt-6 space-y-3">
-            <Button 
-              className="w-full h-14 text-base font-semibold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
-              onClick={handleDownload}
-            >
-              <Download className="w-5 h-5 mr-2" />
-              Download PDF
-            </Button>
-            
-            <Button 
-              variant="outline"
-              className="w-full h-14 text-base font-semibold rounded-xl border-2 border-border hover:bg-accent"
-              onClick={() => setShowSharePanel(true)}
-            >
-              <Share2 className="w-5 h-5 mr-2" />
-              Share
-            </Button>
-          </div>
+            {/* Uploader Information */}
+            <div className="py-5 border-b border-border">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-full bg-muted/30">
+                  <User className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Uploaded by</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {displayName || 'Guest User'}
+                  </p>
+                </div>
+              </div>
+            </div>
 
-          {/* Share Panel */}
-          <SharePanel 
-            open={showSharePanel}
-            onOpenChange={setShowSharePanel}
-            shareUrl={shareUrl}
-            pdfName={pdf.name}
-          />
-        </div>
-      </SheetContent>
-    </Sheet>
+            {/* Action Buttons */}
+            <div className="pt-6 space-y-3">
+              {/* Ask AI - Only for OCR PDFs */}
+              {isOCR && (
+                <Button
+                  className="w-full h-14 text-base font-semibold rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white shadow-lg"
+                  onClick={handleAskAI}
+                  disabled={loadingContext}
+                >
+                  {loadingContext ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Analyzing document…
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-5 h-5 mr-2" />
+                      Ask AI ✨
+                    </>
+                  )}
+                </Button>
+              )}
+
+              <Button 
+                className="w-full h-14 text-base font-semibold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
+                onClick={handleDownload}
+              >
+                <Download className="w-5 h-5 mr-2" />
+                Download PDF
+              </Button>
+              
+              <Button 
+                variant="outline"
+                className="w-full h-14 text-base font-semibold rounded-xl border-2 border-border hover:bg-accent"
+                onClick={() => setShowSharePanel(true)}
+              >
+                <Share2 className="w-5 h-5 mr-2" />
+                Share
+              </Button>
+            </div>
+
+            {/* Share Panel */}
+            <SharePanel 
+              open={showSharePanel}
+              onOpenChange={setShowSharePanel}
+              shareUrl={shareUrl}
+              pdfName={pdf.name}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* AI Chat Modal */}
+      <AskAIChat
+        open={showAIChat}
+        onClose={() => setShowAIChat(false)}
+        pdfContext={pdfContext}
+        pdfName={pdf.name}
+      />
+    </>
   );
 };
 
