@@ -67,6 +67,7 @@ async function uploadWorldPdfViaEdge(
         size: pdf.size,
         tags: pdf.tags,
         pageCount: pdf.pageCount,
+        isOCR: pdf.isOCR || false,
       }),
     }
   );
@@ -92,6 +93,7 @@ export const mockStorage = {
         id: pdfId,
         downloadUrl: pdf.downloadUrl,
         thumbnailUrl: pdf.thumbnailUrl,
+        isOCR: pdf.isOCR,
       };
 
       pdfs.push(newPDF);
@@ -125,7 +127,7 @@ export const mockStorage = {
     // Don't fetch download_url initially for old base64 data to avoid timeout
     const { data, error } = await supabase
       .from('world_pdfs')
-      .select('id, name, user_id, timestamp, thumbnail_url, size, tags, page_count, display_name')
+      .select('id, name, user_id, timestamp, thumbnail_url, size, tags, page_count, display_name, is_ocr')
       .order('timestamp', { ascending: false })
       .limit(limit)
       .range(offset, offset + limit - 1);
@@ -143,6 +145,7 @@ export const mockStorage = {
       size: pdf.size,
       tags: pdf.tags as PDFTag[],
       pageCount: pdf.page_count,
+      isOCR: pdf.is_ocr ?? false,
     }));
   },
 
@@ -165,7 +168,7 @@ export const mockStorage = {
   async searchWorldPDFs(query: string, tags: PDFTag[], limit: number = 50): Promise<PDFDocument[]> {
     let dbQuery = supabase
       .from('world_pdfs')
-      .select('id, name, user_id, timestamp, thumbnail_url, size, tags, page_count, display_name');
+      .select('id, name, user_id, timestamp, thumbnail_url, size, tags, page_count, display_name, is_ocr');
 
     // Add search conditions with input sanitization and escape SQL wildcards
     if (query) {
@@ -198,6 +201,7 @@ export const mockStorage = {
       size: pdf.size,
       tags: pdf.tags as PDFTag[],
       pageCount: pdf.page_count,
+      isOCR: pdf.is_ocr ?? false,
     }));
   },
 

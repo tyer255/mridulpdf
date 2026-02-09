@@ -11,4 +11,5 @@ export interface PDFDocument {
   size?: number;
   tags: PDFTag[];
   pageCount?: number;
+  isOCR?: boolean;
 }
