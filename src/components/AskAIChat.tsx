@@ -20,10 +20,21 @@ const AskAIChat = ({ open, onClose, pdfContext, pdfName }: AskAIChatProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [speakingId, setSpeakingId] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Auto-focus input when chat opens (with delay for mobile keyboards)
+  useEffect(() => {
+    if (open) {
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [open]);
 
   // Stop TTS on unmount
   useEffect(() => {
@@ -193,12 +204,14 @@ const AskAIChat = ({ open, onClose, pdfContext, pdfName }: AskAIChatProps) => {
       <div className="border-t border-border p-3 bg-card safe-bottom">
         <div className="flex gap-2">
           <Input
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
             placeholder="Ask a question..."
             className="flex-1 rounded-full bg-muted border-0"
             disabled={isLoading}
+            autoComplete="off"
           />
           <Button
             onClick={sendMessage}
