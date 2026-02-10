@@ -371,7 +371,38 @@ const HandwritingOCR = () => {
     setStep('results');
   };
 
-  // Create PDF from extracted text - using images with text overlay for Hindi support
+  // Parse layout tags from OCR output
+  const parseLayoutLine = (line: string) => {
+    const tags: { align?: 'center' | 'right'; size?: 'h1' | 'h2' | 'h3' | 'small'; bold?: boolean; indent?: boolean; isLine?: boolean; isSpace?: boolean; isHeader?: boolean; isFooter?: boolean } = {};
+    let text = line;
+
+    if (text.trim() === '[LINE]') return { text: '', ...tags, isLine: true };
+    if (text.trim() === '[SPACE]') return { text: '', ...tags, isSpace: true };
+
+    // Alignment
+    if (text.includes('[CENTER]')) { tags.align = 'center'; text = text.replace(/\[CENTER\]/g, '').replace(/\[\/CENTER\]/g, ''); }
+    if (text.includes('[RIGHT]')) { tags.align = 'right'; text = text.replace(/\[RIGHT\]/g, '').replace(/\[\/RIGHT\]/g, ''); }
+
+    // Size
+    if (text.includes('[H1]')) { tags.size = 'h1'; tags.bold = true; text = text.replace(/\[H1\]/g, '').replace(/\[\/H1\]/g, ''); }
+    if (text.includes('[H2]')) { tags.size = 'h2'; tags.bold = true; text = text.replace(/\[H2\]/g, '').replace(/\[\/H2\]/g, ''); }
+    if (text.includes('[H3]')) { tags.size = 'h3'; tags.bold = true; text = text.replace(/\[H3\]/g, '').replace(/\[\/H3\]/g, ''); }
+    if (text.includes('[SMALL]')) { tags.size = 'small'; text = text.replace(/\[SMALL\]/g, '').replace(/\[\/SMALL\]/g, ''); }
+
+    // Bold
+    if (text.includes('[BOLD]')) { tags.bold = true; text = text.replace(/\[BOLD\]/g, '').replace(/\[\/BOLD\]/g, ''); }
+
+    // Indent
+    if (text.includes('[INDENT]')) { tags.indent = true; text = text.replace(/\[INDENT\]/g, '').replace(/\[\/INDENT\]/g, ''); }
+
+    // Header/Footer
+    if (text.includes('[HEADER]')) { tags.isHeader = true; text = text.replace(/\[HEADER\]/g, '').replace(/\[\/HEADER\]/g, ''); }
+    if (text.includes('[FOOTER]')) { tags.isFooter = true; tags.size = 'small'; text = text.replace(/\[FOOTER\]/g, '').replace(/\[\/FOOTER\]/g, ''); }
+
+    return { text: text.trim(), ...tags };
+  };
+
+  // Create PDF from extracted text - layout-aware rendering
   const createPDF = async () => {
     if (extractedPages.length === 0) return;
     
@@ -390,10 +421,9 @@ const HandwritingOCR = () => {
         
         const page = extractedPages[i];
         
-        // Create a canvas with the text rendered properly
         const canvas = document.createElement('canvas');
-        const scale = 3; // High resolution for clarity
-        canvas.width = contentWidth * scale * 3.78; // mm to px at 96dpi * scale
+        const scale = 3;
+        canvas.width = contentWidth * scale * 3.78;
         canvas.height = contentHeight * scale * 3.78;
         const ctx = canvas.getContext('2d');
         
@@ -402,54 +432,103 @@ const HandwritingOCR = () => {
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           
-          // Setup text rendering with Unicode-compatible font
-          ctx.fillStyle = '#000000';
-          ctx.font = `${16 * scale}px "Noto Sans Devanagari", "Mangal", "Arial Unicode MS", sans-serif`;
-          ctx.textBaseline = 'top';
-          
-          const lineHeight = 24 * scale;
+          const baseFontSize = 14 * scale;
           const maxWidth = canvas.width - 40 * scale;
+          const leftMargin = 20 * scale;
+          const indentMargin = 40 * scale;
           let y = 20 * scale;
           
-          // Split text by lines and render
-          const paragraphs = page.text.split('\n');
+          const fontSizes = {
+            h1: 22 * scale,
+            h2: 18 * scale,
+            h3: 16 * scale,
+            small: 10 * scale,
+            normal: baseFontSize,
+          };
+
+          const lineHeights = {
+            h1: 30 * scale,
+            h2: 26 * scale,
+            h3: 24 * scale,
+            small: 16 * scale,
+            normal: 22 * scale,
+          };
+
+          const setFont = (size: string | undefined, bold: boolean | undefined) => {
+            const fontSize = fontSizes[(size as keyof typeof fontSizes) || 'normal'];
+            const weight = bold ? 'bold' : 'normal';
+            ctx.font = `${weight} ${fontSize}px "Noto Sans Devanagari", "Mangal", "Arial Unicode MS", sans-serif`;
+          };
           
-          for (const paragraph of paragraphs) {
-            if (paragraph.trim() === '') {
-              y += lineHeight * 0.5;
+          const lines = page.text.split('\n');
+          
+          for (const rawLine of lines) {
+            const parsed = parseLayoutLine(rawLine);
+            
+            // Horizontal separator line
+            if (parsed.isLine) {
+              ctx.strokeStyle = '#333333';
+              ctx.lineWidth = 1.5 * scale;
+              ctx.beginPath();
+              ctx.moveTo(leftMargin, y);
+              ctx.lineTo(canvas.width - leftMargin, y);
+              ctx.stroke();
+              y += 10 * scale;
               continue;
             }
             
-            // Word wrap
-            const words = paragraph.split(' ');
-            let line = '';
-            
-            for (const word of words) {
-              const testLine = line + (line ? ' ' : '') + word;
-              const metrics = ctx.measureText(testLine);
-              
-              if (metrics.width > maxWidth && line) {
-                ctx.fillText(line, 20 * scale, y);
-                line = word;
-                y += lineHeight;
-              } else {
-                line = testLine;
-              }
+            // Extra vertical space
+            if (parsed.isSpace) {
+              y += 14 * scale;
+              continue;
             }
             
-            if (line) {
-              ctx.fillText(line, 20 * scale, y);
+            if (!parsed.text) {
+              y += 8 * scale;
+              continue;
+            }
+            
+            const sizeKey = (parsed.size || 'normal') as keyof typeof fontSizes;
+            const lineHeight = lineHeights[sizeKey];
+            const xStart = parsed.indent ? indentMargin : leftMargin;
+            const availWidth = parsed.indent ? maxWidth - 20 * scale : maxWidth;
+            
+            ctx.fillStyle = '#000000';
+            setFont(parsed.size, parsed.bold);
+            
+            // Handle mixed left+right on same line (e.g. "Time: 3 Hours [RIGHT]Max Marks: 75[/RIGHT]")
+            // This is already parsed out, so just handle alignment
+            
+            // Word wrap the text
+            const words = parsed.text.split(' ');
+            let currentLine = '';
+            const wrappedLines: string[] = [];
+            
+            for (const word of words) {
+              const testLine = currentLine + (currentLine ? ' ' : '') + word;
+              if (ctx.measureText(testLine).width > availWidth && currentLine) {
+                wrappedLines.push(currentLine);
+                currentLine = word;
+              } else {
+                currentLine = testLine;
+              }
+            }
+            if (currentLine) wrappedLines.push(currentLine);
+            
+            for (const wLine of wrappedLines) {
+              let x = xStart;
+              if (parsed.align === 'center') {
+                x = (canvas.width - ctx.measureText(wLine).width) / 2;
+              } else if (parsed.align === 'right') {
+                x = canvas.width - leftMargin - ctx.measureText(wLine).width;
+              }
+              
+              ctx.fillText(wLine, x, y);
               y += lineHeight;
             }
           }
-          
-          // Add page number
-          ctx.fillStyle = '#666666';
-          ctx.font = `${12 * scale}px Arial`;
-          ctx.fillText(`Page ${i + 1} of ${extractedPages.length}`, canvas.width / 2 - 40 * scale, canvas.height - 20 * scale);
         }
         
-        // Add canvas as image to PDF
         const imgData = canvas.toDataURL('image/jpeg', 0.95);
         pdf.addImage(imgData, 'JPEG', margin, margin, contentWidth, contentHeight);
       }
