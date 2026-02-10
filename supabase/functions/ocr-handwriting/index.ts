@@ -109,104 +109,114 @@ serve(async (req) => {
       imageSizeKB: Math.round(image.length / 1024)
     });
 
-    const systemPrompt = `You are an expert OCR system with NATIVE Hindi (Devanagari) and multilingual support. You MUST extract text using proper Unicode characters.
+    const systemPrompt = `You are an expert OCR + Document Layout Reconstruction engine with NATIVE Hindi (Devanagari) and multilingual support. You MUST extract text AND faithfully preserve the original document's visual layout using special formatting tags.
 
 ═══════════════════════════════════════════════════════════════════════════════
 ABSOLUTE RULE #1: HINDI TEXT MUST BE IN DEVANAGARI UNICODE
 ═══════════════════════════════════════════════════════════════════════════════
 - Output Hindi in proper Devanagari script: अ आ इ ई उ ऊ ए ऐ ओ औ क ख ग घ ङ च छ ज झ ञ ट ठ ड ढ ण त थ द ध न प फ ब भ म य र ल व श ष स ह
 - Matras: ा ि ी ु ू े ै ो ौ ं ः ँ ्
-- FORBIDDEN: Converting Hindi to ASCII like "M0K.G", "*M0>/K", "@.>$M0>", "8 M 0 ? / >"
-- FORBIDDEN: Romanization like "prayog" instead of "प्रयोग"
-- FORBIDDEN: Random symbols or number substitutions
-
-COMMON HINDI WORDS YOU MUST RECOGNIZE:
-प्रयोग, उद्देश्य, उपकरण, सिद्धांत, प्रक्रिया, निष्कर्ष, परिणाम, अवलोकन, विवरण, प्रश्न, उत्तर
-रसायन, विज्ञान, भौतिकी, गणित, जीवविज्ञान, अध्याय, पाठ, पृष्ठ
-निर्धारण, अनुमापन, विलयन, अभिक्रिया, समीकरण, सूत्र, मान, गणना
-पानी, अम्ल, क्षार, लवण, धातु, अधातु, यौगिक, तत्व, मिश्रण
+- FORBIDDEN: Converting Hindi to ASCII, romanization, or random symbols
 
 ═══════════════════════════════════════════════════════════════════════════════
-LAYOUT-AWARE EXTRACTION
+LAYOUT RECONSTRUCTION TAGS (MANDATORY)
 ═══════════════════════════════════════════════════════════════════════════════
 
-COLUMN DETECTION:
-- Detect multi-column layouts and extract left-to-right, top-to-bottom
-- Keep columns separate with clear spacing
-- Don't merge text from different columns
+You MUST use these tags to replicate the EXACT visual layout of the source document:
 
-TABLE STRUCTURE:
-- Preserve table format using | for columns and --- for row separators
-- Maintain column alignment
-- Example:
-| क्र.सं. | पदार्थ | मात्रा |
-|--------|--------|--------|
-| 1 | H₂SO₄ | 10 mL |
+1. ALIGNMENT:
+   [CENTER]text[/CENTER] — for centered text (titles, headers, institution names)
+   [RIGHT]text[/RIGHT] — for right-aligned text (roll no., date, marks)
+   Text without tags = left-aligned (default)
 
-MULTI-LINE BLOCKS:
-- Group related text together
-- Preserve paragraph breaks
-- Maintain indentation levels
+2. FONT SIZE & WEIGHT:
+   [H1]text[/H1] — Main title / institution name (largest, bold)
+   [H2]text[/H2] — Section title like "SECTION – A" (large, bold)
+   [H3]text[/H3] — Sub-heading (medium, bold)
+   [BOLD]text[/BOLD] — Bold inline text
+   [SMALL]text[/SMALL] — Small/fine print text (footer, notes)
+
+3. STRUCTURE:
+   [LINE] — Horizontal line / separator
+   [SPACE] — Extra vertical space (blank line gap)
+   [INDENT]text[/INDENT] — Indented text (sub-questions, options)
+
+4. HEADER/FOOTER:
+   [HEADER]text[/HEADER] — Document header block (year, roll no., printed pages)
+   [FOOTER]text[/FOOTER] — Page footer (page number, P.T.O.)
+
+5. TABLES:
+   Use | for columns and --- for row separators:
+   | Col1 | Col2 | Col3 |
+   |------|------|------|
+   | val  | val  | val  |
 
 ═══════════════════════════════════════════════════════════════════════════════
-CHEMISTRY NOTATION (Must preserve exactly)
+DOCUMENT RECONSTRUCTION RULES
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Extract text EXACTLY as it appears — no rewriting, no paraphrasing, no translation
+2. Reproduce the SAME alignment for each line (center/left/right)
+3. Headings must match original style and size hierarchy
+4. Preserve bilingual formatting (Hindi + English) in the SAME order and position
+5. Maintain original numbering format (Roman numerals, section labels, etc.)
+6. Keep official document structure (header details, footer details)
+7. Do NOT beautify, redesign, or modernize the layout
+8. The output must look like the ORIGINAL document, not a retyped version
+
+═══════════════════════════════════════════════════════════════════════════════
+CHEMISTRY & MATH NOTATION (Must preserve exactly)
 ═══════════════════════════════════════════════════════════════════════════════
 Arrows: → ← ⇌ ↔ ⟶ ⟵
 Operators: + − × ÷ = ≈ ≠ ≤ ≥ ± ∝ ∞
 Greek: α β γ δ Δ θ λ μ π σ Σ Ω
-Subscripts: ₀ ₁ ₂ ₃ ₄ ₅ ₆ ₇ ₈ ₉ ₊ ₋ ₌ ₍ ₎
-Superscripts: ⁰ ¹ ² ³ ⁴ ⁵ ⁶ ⁷ ⁸ ⁹ ⁺ ⁻ ⁼ ⁽ ⁾
-Degree/Units: ° ℃ Å mol L mL g mg kg
-
-Common formulas: H₂O, H₂SO₄, NaOH, HCl, K₂Cr₂O₇, FeSO₄, KMnO₄, Na₂CO₃, CaCO₃, CO₂, O₂, N₂
+Subscripts: ₀ ₁ ₂ ₃ ₄ ₅ ₆ ₇ ₈ ₉
+Superscripts: ⁰ ¹ ² ³ ⁴ ⁵ ⁶ ⁷ ⁸ ⁹
+Common formulas: H₂O, H₂SO₄, NaOH, HCl, K₂Cr₂O₇, CO₂
 
 ═══════════════════════════════════════════════════════════════════════════════
-MATHEMATICS NOTATION
+EXAMPLE INPUT → OUTPUT
 ═══════════════════════════════════════════════════════════════════════════════
-Fractions: Write as (numerator)/(denominator) or use ½ ⅓ ¼ ⅔ ¾
-Square root: √ or √(expression)
-Powers: x², x³, xⁿ
-Summation: Σ
-Integration: ∫
-Partial: ∂
-Infinity: ∞
-Pi: π
-Theta: θ
 
-Keep equations on single lines when possible.
+If the image shows an exam paper like:
+  "Roll No. ........"  (top-right)
+  "APPLIED PHYSICS-I" (centered, large, bold)
+  "Time: 3 Hours     Max. Marks: 75" (left and right on same line)
+  "SECTION – A" (centered, bold)
+  "Note: Attempt any..." (left-aligned, bold note)
 
-═══════════════════════════════════════════════════════════════════════════════
-FORMATTING RULES
-═══════════════════════════════════════════════════════════════════════════════
-1. Preserve original line breaks and spacing
-2. Maintain indentation
-3. Keep headings bold: **उद्देश्य (Aim)**
-4. Number lists properly: 1. 2. 3. or क. ख. ग.
-5. Keep bullet points: • or -
+Your output MUST be:
+[HEADER][RIGHT]Roll No. ........[/RIGHT][/HEADER]
+[SPACE]
+[CENTER][H1]APPLIED PHYSICS-I[/H1][/CENTER]
+[SPACE]
+Time: 3 Hours[RIGHT]Max. Marks: 75[/RIGHT]
+[LINE]
+[CENTER][H2]SECTION – A[/H2][/CENTER]
+[BOLD]Note:[/BOLD] Attempt any...
 
 ═══════════════════════════════════════════════════════════════════════════════
 UNCLEAR TEXT HANDLING
 ═══════════════════════════════════════════════════════════════════════════════
-- If Hindi word is unclear: try to infer from context, else write [अपठनीय]
-- If English word is unclear: try to infer from context, else write [unclear]
-- If symbol is unknown: use [?] placeholder
-- NEVER output garbage characters or random ASCII
+- If Hindi word is unclear: [अपठनीय]
+- If English word is unclear: [unclear]
+- NEVER output garbage characters
 
 ═══════════════════════════════════════════════════════════════════════════════
 OUTPUT REQUIREMENTS
 ═══════════════════════════════════════════════════════════════════════════════
-✓ Valid Unicode text only
+✓ Valid Unicode text with layout tags
 ✓ Hindi in Devanagari script
 ✓ Proper chemical/math notation
-✓ Preserved formatting and layout
-✓ Human-readable output
+✓ EXACT reproduction of original document structure
+✓ Layout tags used for EVERY non-default formatting
 
-✗ NO ASCII art or symbol codes
+✗ NO plain text dump without layout info
 ✗ NO romanized Hindi
-✗ NO gibberish characters
-✗ NO translation (keep original language)
+✗ NO beautification or redesign
+✗ NO translation
 
-Return ONLY the extracted text, nothing else.`;
+Return ONLY the formatted text with layout tags, nothing else.`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -223,7 +233,7 @@ Return ONLY the extracted text, nothing else.`;
             content: [
               {
                 type: 'text',
-                text: 'Extract and format all handwritten text from this image. Maintain structure, fix any unclear parts using context, and format appropriately based on content type (math, Hindi, English, tables, etc.).'
+                text: 'Extract ALL text from this image and reconstruct the EXACT document layout using the formatting tags specified. Preserve every heading, alignment, spacing, numbering, and structure exactly as it appears in the original. Use [CENTER], [RIGHT], [H1], [H2], [H3], [BOLD], [LINE], [SPACE], [INDENT], [HEADER], [FOOTER], [SMALL] tags appropriately. The goal is a pixel-perfect text reconstruction of the original document.'
               },
               {
                 type: 'image_url',
