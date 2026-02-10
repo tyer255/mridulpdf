@@ -83,11 +83,12 @@ const PDFDetailsSheet = ({
       const storedText = localStorage.getItem(`ocr_text_${pdf.id}`);
       if (storedText) {
         setPdfContext(storedText);
-        setShowAIChat(true);
       } else {
         setPdfContext('(OCR text not available for this document)');
-        setShowAIChat(true);
       }
+      // Close the sheet BEFORE opening AI chat
+      onOpenChange(false);
+      setShowAIChat(true);
     } catch (error) {
       console.error('Error loading PDF context:', error);
     } finally {
