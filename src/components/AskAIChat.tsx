@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, Send, Sparkles, Volume2, VolumeX, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+
 
 type Message = { role: 'user' | 'assistant'; content: string };
 
@@ -203,15 +203,21 @@ const AskAIChat = ({ open, onClose, pdfContext, pdfName }: AskAIChatProps) => {
       {/* Input */}
       <div className="border-t border-border p-3 bg-card safe-bottom">
         <div className="flex gap-2">
-          <Input
+          <input
             ref={inputRef}
+            type="text"
+            inputMode="text"
+            enterKeyHint="send"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+            onClick={(e) => (e.target as HTMLInputElement).focus()}
             placeholder="Ask a question..."
-            className="flex-1 rounded-full bg-muted border-0"
+            className="flex-1 h-10 rounded-full bg-muted border-0 px-4 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
             disabled={isLoading}
             autoComplete="off"
+            autoCorrect="on"
+            spellCheck={false}
           />
           <Button
             onClick={sendMessage}
