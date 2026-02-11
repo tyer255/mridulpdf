@@ -79,19 +79,16 @@ const PDFDetailsSheet = ({
   const handleAskAI = async () => {
     setLoadingContext(true);
     try {
-      // Try to get stored OCR text
       const storedText = localStorage.getItem(`ocr_text_${pdf.id}`);
-      if (storedText) {
-        setPdfContext(storedText);
-      } else {
-        setPdfContext('(OCR text not available for this document)');
-      }
-      // Close the sheet BEFORE opening AI chat
+      setPdfContext(storedText || '(OCR text not available for this document)');
+      // Close sheet first, then open AI chat after overlay animation finishes
       onOpenChange(false);
-      setShowAIChat(true);
+      setTimeout(() => {
+        setShowAIChat(true);
+        setLoadingContext(false);
+      }, 400);
     } catch (error) {
       console.error('Error loading PDF context:', error);
-    } finally {
       setLoadingContext(false);
     }
   };
