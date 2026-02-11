@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { PDFDocument } from '@/types/pdf';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -43,6 +43,30 @@ const PDFDetailsSheet = ({
   const [pdfContext, setPdfContext] = useState<string>('');
   const [loadingContext, setLoadingContext] = useState(false);
 
+  // Prevent "stale" delayed open from firing after user taps other PDFs
+  const askAiTimeoutRef = useRef<number | null>(null);
+  const askAiRequestRef = useRef<{ pdfId: string; token: number } | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (askAiTimeoutRef.current) {
+        window.clearTimeout(askAiTimeoutRef.current);
+        askAiTimeoutRef.current = null;
+      }
+      askAiRequestRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    // If user selected a different PDF while a delayed Ask-AI was pending, cancel it.
+    askAiRequestRef.current = null;
+    if (askAiTimeoutRef.current) {
+      window.clearTimeout(askAiTimeoutRef.current);
+      askAiTimeoutRef.current = null;
+    }
+    setLoadingContext(false);
+  }, [pdf?.id]);
+
   // Fetch the actual download URL when sheet opens
   useEffect(() => {
     const fetchShareUrl = async () => {
@@ -77,16 +101,33 @@ const PDFDetailsSheet = ({
   };
 
   const handleAskAI = async () => {
+    // IMPORTANT: only open chat when this button is explicitly clicked
+    if (!pdf) return;
+
+    // Cancel any previous pending open
+    if (askAiTimeoutRef.current) {
+      window.clearTimeout(askAiTimeoutRef.current);
+      askAiTimeoutRef.current = null;
+    }
+
+    const token = Date.now();
+    askAiRequestRef.current = { pdfId: pdf.id, token };
+
     setLoadingContext(true);
     try {
       const storedText = localStorage.getItem(`ocr_text_${pdf.id}`);
       setPdfContext(storedText || '(OCR text not available for this document)');
+
       // Close sheet first, then open AI chat after overlay animation finishes
       onOpenChange(false);
-      setTimeout(() => {
+      askAiTimeoutRef.current = window.setTimeout(() => {
+        const req = askAiRequestRef.current;
+        // Only open if it is still the same explicit request (prevents opening on random taps)
+        if (!req || req.token !== token || req.pdfId !== pdf.id) return;
+
         setShowAIChat(true);
         setLoadingContext(false);
-      }, 400);
+      }, 450);
     } catch (error) {
       console.error('Error loading PDF context:', error);
       setLoadingContext(false);
@@ -170,6 +211,7 @@ const PDFDetailsSheet = ({
               {/* Ask AI - Only for OCR PDFs */}
               {isOCR && (
                 <Button
+                  type="button"
                   className="w-full h-14 text-base font-semibold rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white shadow-lg"
                   onClick={handleAskAI}
                   disabled={loadingContext}
@@ -189,6 +231,7 @@ const PDFDetailsSheet = ({
               )}
 
               <Button 
+                type="button"
                 className="w-full h-14 text-base font-semibold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
                 onClick={handleDownload}
               >
@@ -197,6 +240,7 @@ const PDFDetailsSheet = ({
               </Button>
               
               <Button 
+                type="button"
                 variant="outline"
                 className="w-full h-14 text-base font-semibold rounded-xl border-2 border-border hover:bg-accent"
                 onClick={() => setShowSharePanel(true)}
