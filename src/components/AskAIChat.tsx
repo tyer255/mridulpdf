@@ -200,9 +200,12 @@ const AskAIChat = ({ open, onClose, pdfContext, pdfName }: AskAIChatProps) => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <div className="border-t border-border p-3 bg-card safe-bottom">
-        <div className="flex gap-2">
+      {/* Input - improved for mobile */}
+      <div className="border-t border-border p-3 pb-4 bg-card safe-bottom">
+        <form
+          onSubmit={(e) => { e.preventDefault(); sendMessage(); }}
+          className="flex items-center gap-2 bg-muted rounded-2xl px-3 py-1.5"
+        >
           <input
             ref={inputRef}
             type="text"
@@ -210,24 +213,23 @@ const AskAIChat = ({ open, onClose, pdfContext, pdfName }: AskAIChatProps) => {
             enterKeyHint="send"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
             onClick={(e) => (e.target as HTMLInputElement).focus()}
-            placeholder="Ask a question..."
-            className="flex-1 h-10 rounded-full bg-muted border-0 px-4 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            placeholder="Type your question here..."
+            className="flex-1 h-11 bg-transparent border-0 px-1 text-base text-foreground placeholder:text-muted-foreground focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
             disabled={isLoading}
             autoComplete="off"
             autoCorrect="on"
             spellCheck={false}
           />
           <Button
-            onClick={sendMessage}
+            type="submit"
             size="icon"
             disabled={!input.trim() || isLoading}
-            className="rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white shrink-0"
+            className="rounded-full w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white shrink-0"
           >
             <Send className="w-4 h-4" />
           </Button>
-        </div>
+        </form>
       </div>
     </div>
   );
