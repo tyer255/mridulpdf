@@ -83,9 +83,19 @@ const PDFDetailsSheet = ({
     fetchShareUrl();
   }, [pdf, open]);
 
-  if (!pdf) return null;
+  // Keep AI chat name even after pdf becomes null (sheet closed)
+  const [aiPdfName, setAiPdfName] = useState('');
 
-  const isOCR = pdf.isOCR === true;
+  // Update AI pdf name when Ask AI is triggered
+  useEffect(() => {
+    if (pdf?.name && loadingContext) {
+      setAiPdfName(pdf.name);
+    }
+  }, [pdf?.name, loadingContext]);
+
+  if (!pdf && !showAIChat) return null;
+
+  const isOCR = pdf?.isOCR === true;
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('en-US', {
@@ -96,6 +106,7 @@ const PDFDetailsSheet = ({
   };
 
   const handleDownload = () => {
+    if (!pdf) return;
     onDownload(pdf);
     onOpenChange(false);
   };
@@ -114,6 +125,7 @@ const PDFDetailsSheet = ({
     askAiRequestRef.current = { pdfId: pdf.id, token };
 
     setLoadingContext(true);
+    setAiPdfName(pdf.name);
     try {
       const storedText = localStorage.getItem(`ocr_text_${pdf.id}`);
       setPdfContext(storedText || '(OCR text not available for this document)');
@@ -136,137 +148,138 @@ const PDFDetailsSheet = ({
 
   return (
     <>
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent 
-          side="bottom" 
-          className="h-auto max-h-[85vh] rounded-t-3xl bg-card border-t border-border p-0 overflow-hidden"
-        >
-          {/* Handle bar */}
-          <div className="flex justify-center pt-3 pb-2">
-            <div className="w-12 h-1.5 bg-muted rounded-full" />
-          </div>
+      {pdf && (
+        <Sheet open={open} onOpenChange={onOpenChange}>
+          <SheetContent 
+            side="bottom" 
+            className="h-auto max-h-[85vh] rounded-t-3xl bg-card border-t border-border p-0 overflow-hidden"
+          >
+            {/* Handle bar */}
+            <div className="flex justify-center pt-3 pb-2">
+              <div className="w-12 h-1.5 bg-muted rounded-full" />
+            </div>
 
-          <div className="px-6 pb-8 overflow-y-auto max-h-[calc(85vh-24px)]">
-            {/* Header Section */}
-            <SheetHeader className="pb-4 border-b border-border">
-              <div className="flex items-start gap-3">
-                <div className="p-3 rounded-xl bg-primary/10">
-                  <FileText className="w-8 h-8 text-primary" />
+            <div className="px-6 pb-8 overflow-y-auto max-h-[calc(85vh-24px)]">
+              {/* Header Section */}
+              <SheetHeader className="pb-4 border-b border-border">
+                <div className="flex items-start gap-3">
+                  <div className="p-3 rounded-xl bg-primary/10">
+                    <FileText className="w-8 h-8 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0 pr-8">
+                    <SheetTitle className="text-xl font-bold text-foreground text-left leading-tight">
+                      {pdf.name}
+                    </SheetTitle>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0 pr-8">
-                  <SheetTitle className="text-xl font-bold text-foreground text-left leading-tight">
-                    {pdf.name}
-                  </SheetTitle>
-                </div>
-              </div>
-            </SheetHeader>
+              </SheetHeader>
 
-            {/* Metadata Section */}
-            <div className="py-5 border-b border-border space-y-4">
-              {pdf.tags && pdf.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {pdf.tags.map(tag => (
-                    <Badge 
-                      key={tag} 
-                      variant="tag" 
-                      className="px-3 py-1.5 text-sm font-medium"
-                    >
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-
-              <div className="flex flex-wrap gap-4">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Clock className="w-4 h-4" />
-                  <span className="text-sm">{formatDate(pdf.timestamp)}</span>
-                </div>
-                {pdf.pageCount && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <FileStack className="w-4 h-4" />
-                    <span className="text-sm">{pdf.pageCount} pages</span>
+              {/* Metadata Section */}
+              <div className="py-5 border-b border-border space-y-4">
+                {pdf.tags && pdf.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {pdf.tags.map(tag => (
+                      <Badge 
+                        key={tag} 
+                        variant="tag" 
+                        className="px-3 py-1.5 text-sm font-medium"
+                      >
+                        {tag}
+                      </Badge>
+                    ))}
                   </div>
                 )}
-              </div>
-            </div>
 
-            {/* Uploader Information */}
-            <div className="py-5 border-b border-border">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-full bg-muted/30">
-                  <User className="w-5 h-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Uploaded by</p>
-                  <p className="text-sm font-medium text-foreground">
-                    {displayName || 'Guest User'}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="pt-6 space-y-3">
-              {/* Ask AI - Only for OCR PDFs */}
-              {isOCR && (
-                <Button
-                  type="button"
-                  className="w-full h-14 text-base font-semibold rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white shadow-lg"
-                  onClick={handleAskAI}
-                  disabled={loadingContext}
-                >
-                  {loadingContext ? (
-                    <>
-                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                      Analyzing document…
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-5 h-5 mr-2" />
-                      Ask AI ✨
-                    </>
+                <div className="flex flex-wrap gap-4">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Clock className="w-4 h-4" />
+                    <span className="text-sm">{formatDate(pdf.timestamp)}</span>
+                  </div>
+                  {pdf.pageCount && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <FileStack className="w-4 h-4" />
+                      <span className="text-sm">{pdf.pageCount} pages</span>
+                    </div>
                   )}
+                </div>
+              </div>
+
+              {/* Uploader Information */}
+              <div className="py-5 border-b border-border">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-full bg-muted/30">
+                    <User className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Uploaded by</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {displayName || 'Guest User'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-6 space-y-3">
+                {isOCR && (
+                  <Button
+                    type="button"
+                    className="w-full h-14 text-base font-semibold rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white shadow-lg"
+                    onClick={handleAskAI}
+                    disabled={loadingContext}
+                  >
+                    {loadingContext ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Analyzing document…
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-5 h-5 mr-2" />
+                        Ask AI ✨
+                      </>
+                    )}
+                  </Button>
+                )}
+
+                <Button 
+                  type="button"
+                  className="w-full h-14 text-base font-semibold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
+                  onClick={handleDownload}
+                >
+                  <Download className="w-5 h-5 mr-2" />
+                  Download PDF
                 </Button>
-              )}
+                
+                <Button 
+                  type="button"
+                  variant="outline"
+                  className="w-full h-14 text-base font-semibold rounded-xl border-2 border-border hover:bg-accent"
+                  onClick={() => setShowSharePanel(true)}
+                >
+                  <Share2 className="w-5 h-5 mr-2" />
+                  Share
+                </Button>
+              </div>
 
-              <Button 
-                type="button"
-                className="w-full h-14 text-base font-semibold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
-                onClick={handleDownload}
-              >
-                <Download className="w-5 h-5 mr-2" />
-                Download PDF
-              </Button>
-              
-              <Button 
-                type="button"
-                variant="outline"
-                className="w-full h-14 text-base font-semibold rounded-xl border-2 border-border hover:bg-accent"
-                onClick={() => setShowSharePanel(true)}
-              >
-                <Share2 className="w-5 h-5 mr-2" />
-                Share
-              </Button>
+              {/* Share Panel */}
+              <SharePanel 
+                open={showSharePanel}
+                onOpenChange={setShowSharePanel}
+                shareUrl={shareUrl}
+                pdfName={pdf.name}
+              />
             </div>
+          </SheetContent>
+        </Sheet>
+      )}
 
-            {/* Share Panel */}
-            <SharePanel 
-              open={showSharePanel}
-              onOpenChange={setShowSharePanel}
-              shareUrl={shareUrl}
-              pdfName={pdf.name}
-            />
-          </div>
-        </SheetContent>
-      </Sheet>
-
-      {/* AI Chat Modal */}
+      {/* AI Chat Modal - rendered outside Sheet so it persists after sheet closes */}
       <AskAIChat
         open={showAIChat}
         onClose={() => setShowAIChat(false)}
         pdfContext={pdfContext}
-        pdfName={pdf.name}
+        pdfName={aiPdfName}
       />
     </>
   );
