@@ -58,13 +58,18 @@ const PDFDetailsSheet = ({
   }, []);
 
   useEffect(() => {
-    // If user selected a different PDF while a delayed Ask-AI was pending, cancel it.
-    askAiRequestRef.current = null;
-    if (askAiTimeoutRef.current) {
-      window.clearTimeout(askAiTimeoutRef.current);
-      askAiTimeoutRef.current = null;
+    // Only cancel pending Ask-AI when switching to a DIFFERENT pdf, not when pdf becomes null (sheet closing)
+    if (pdf?.id) {
+      const pending = askAiRequestRef.current;
+      if (pending && pending.pdfId !== pdf.id) {
+        askAiRequestRef.current = null;
+        if (askAiTimeoutRef.current) {
+          window.clearTimeout(askAiTimeoutRef.current);
+          askAiTimeoutRef.current = null;
+        }
+        setLoadingContext(false);
+      }
     }
-    setLoadingContext(false);
   }, [pdf?.id]);
 
   // Fetch the actual download URL when sheet opens
@@ -112,7 +117,6 @@ const PDFDetailsSheet = ({
   };
 
   const handleAskAI = async () => {
-    // IMPORTANT: only open chat when this button is explicitly clicked
     if (!pdf) return;
 
     // Cancel any previous pending open
@@ -121,29 +125,28 @@ const PDFDetailsSheet = ({
       askAiTimeoutRef.current = null;
     }
 
+    // Capture values before sheet closes and pdf becomes null
+    const capturedPdfId = pdf.id;
+    const capturedPdfName = pdf.name;
     const token = Date.now();
-    askAiRequestRef.current = { pdfId: pdf.id, token };
+    askAiRequestRef.current = { pdfId: capturedPdfId, token };
 
     setLoadingContext(true);
-    setAiPdfName(pdf.name);
-    try {
-      const storedText = localStorage.getItem(`ocr_text_${pdf.id}`);
-      setPdfContext(storedText || '(OCR text not available for this document)');
+    setAiPdfName(capturedPdfName);
 
-      // Close sheet first, then open AI chat after overlay animation finishes
-      onOpenChange(false);
-      askAiTimeoutRef.current = window.setTimeout(() => {
-        const req = askAiRequestRef.current;
-        // Only open if it is still the same explicit request (prevents opening on random taps)
-        if (!req || req.token !== token || req.pdfId !== pdf.id) return;
+    const storedText = localStorage.getItem(`ocr_text_${capturedPdfId}`);
+    setPdfContext(storedText || '(OCR text not available for this document)');
 
-        setShowAIChat(true);
-        setLoadingContext(false);
-      }, 450);
-    } catch (error) {
-      console.error('Error loading PDF context:', error);
+    // Close sheet first, then open AI chat after overlay animation finishes
+    onOpenChange(false);
+    askAiTimeoutRef.current = window.setTimeout(() => {
+      const req = askAiRequestRef.current;
+      // Only open if it is still the same explicit request
+      if (!req || req.token !== token || req.pdfId !== capturedPdfId) return;
+
+      setShowAIChat(true);
       setLoadingContext(false);
-    }
+    }, 450);
   };
 
   return (
