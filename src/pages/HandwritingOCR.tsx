@@ -202,8 +202,8 @@ const HandwritingOCR = () => {
 
       const bitmap = await createImageBitmap(blob);
 
-      // Downscale to reduce CPU time (biggest lag source)
-      const maxDim = 1600;
+      // Downscale large images to reduce payload, but keep enough detail for OCR
+      const maxDim = 2000;
       const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
       const w = Math.max(1, Math.round(bitmap.width * scale));
       const h = Math.max(1, Math.round(bitmap.height * scale));
@@ -217,22 +217,22 @@ const HandwritingOCR = () => {
 
       ctx.drawImage(bitmap, 0, 0, w, h);
 
+      // Light enhancement only - NO binarization (destroys detail for OCR)
       const imageData = ctx.getImageData(0, 0, w, h);
       const data = imageData.data;
 
-      // Single-pass grayscale + contrast + threshold
-      const threshold = 150;
+      // Gentle contrast boost + slight shadow lift — preserve all tonal detail
       for (let i = 0; i < data.length; i += 4) {
-        const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-        const contrast = Math.min(255, Math.max(0, (gray - 128) * 1.35 + 128));
-        const val = contrast < threshold ? 0 : 255;
-        data[i] = data[i + 1] = data[i + 2] = val;
+        // Mild contrast (1.15x) to sharpen text edges without destroying gradients
+        data[i]     = Math.min(255, Math.max(0, (data[i]     - 128) * 1.15 + 128 + 8));
+        data[i + 1] = Math.min(255, Math.max(0, (data[i + 1] - 128) * 1.15 + 128 + 8));
+        data[i + 2] = Math.min(255, Math.max(0, (data[i + 2] - 128) * 1.15 + 128 + 8));
       }
 
       ctx.putImageData(imageData, 0, 0);
 
-      // Lower quality is fine post-binarization and saves bytes/latency
-      return canvas.toDataURL('image/jpeg', 0.85);
+      // High quality JPEG to preserve text detail
+      return canvas.toDataURL('image/jpeg', 0.92);
     } catch (e) {
       console.warn('preprocessImage failed, using original image:', e);
       return imageUrl;
@@ -373,15 +373,28 @@ const HandwritingOCR = () => {
 
   // Parse layout tags from OCR output
   const parseLayoutLine = (line: string) => {
-    const tags: { align?: 'center' | 'right'; size?: 'h1' | 'h2' | 'h3' | 'small'; bold?: boolean; indent?: boolean; isLine?: boolean; isSpace?: boolean; isHeader?: boolean; isFooter?: boolean } = {};
+    const tags: { align?: 'center' | 'right'; size?: 'h1' | 'h2' | 'h3' | 'small'; bold?: boolean; indent?: boolean; isLine?: boolean; isSpace?: boolean; isHeader?: boolean; isFooter?: boolean; isTable?: boolean; rightText?: string } = {};
     let text = line;
 
     if (text.trim() === '[LINE]') return { text: '', ...tags, isLine: true };
     if (text.trim() === '[SPACE]') return { text: '', ...tags, isSpace: true };
+    if (text.trim() === '[TABLE]' || text.trim() === '[/TABLE]') return { text: '', ...tags, isTable: true };
 
-    // Alignment
+    // Extract right-aligned portion from same line (e.g. "Time: 3 Hours[RIGHT]Max Marks: 75[/RIGHT]")
+    const rightMatch = text.match(/\[RIGHT\](.*?)\[\/RIGHT\]/);
+    if (rightMatch) {
+      tags.rightText = rightMatch[1].trim();
+      text = text.replace(/\[RIGHT\].*?\[\/RIGHT\]/, '');
+      // If remaining text is empty, treat entire line as right-aligned
+      if (!text.trim()) {
+        tags.align = 'right';
+        text = tags.rightText;
+        tags.rightText = undefined;
+      }
+    }
+
+    // Alignment (full line)
     if (text.includes('[CENTER]')) { tags.align = 'center'; text = text.replace(/\[CENTER\]/g, '').replace(/\[\/CENTER\]/g, ''); }
-    if (text.includes('[RIGHT]')) { tags.align = 'right'; text = text.replace(/\[RIGHT\]/g, '').replace(/\[\/RIGHT\]/g, ''); }
 
     // Size
     if (text.includes('[H1]')) { tags.size = 'h1'; tags.bold = true; text = text.replace(/\[H1\]/g, '').replace(/\[\/H1\]/g, ''); }
@@ -432,26 +445,27 @@ const HandwritingOCR = () => {
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           
-          const baseFontSize = 14 * scale;
-          const maxWidth = canvas.width - 40 * scale;
-          const leftMargin = 20 * scale;
-          const indentMargin = 40 * scale;
-          let y = 20 * scale;
+          const baseFontSize = 13 * scale;
+          const maxWidth = canvas.width - 50 * scale;
+          const leftMargin = 25 * scale;
+          const rightMargin = 25 * scale;
+          const indentMargin = 50 * scale;
+          let y = 25 * scale;
           
           const fontSizes = {
-            h1: 22 * scale,
-            h2: 18 * scale,
-            h3: 16 * scale,
+            h1: 20 * scale,
+            h2: 17 * scale,
+            h3: 15 * scale,
             small: 10 * scale,
             normal: baseFontSize,
           };
 
           const lineHeights = {
-            h1: 30 * scale,
-            h2: 26 * scale,
-            h3: 24 * scale,
-            small: 16 * scale,
-            normal: 22 * scale,
+            h1: 28 * scale,
+            h2: 24 * scale,
+            h3: 22 * scale,
+            small: 15 * scale,
+            normal: 19 * scale,
           };
 
           const setFont = (size: string | undefined, bold: boolean | undefined) => {
@@ -461,9 +475,40 @@ const HandwritingOCR = () => {
           };
           
           const lines = page.text.split('\n');
+          let inTable = false;
           
           for (const rawLine of lines) {
             const parsed = parseLayoutLine(rawLine);
+            
+            // Table markers
+            if (parsed.isTable) {
+              inTable = !inTable;
+              continue;
+            }
+
+            // Table row rendering
+            if (inTable && parsed.text.includes('|')) {
+              const cells = parsed.text.split('|').filter(c => c.trim() !== '');
+              if (cells.length > 0 && !cells[0].match(/^[\s-]+$/)) {
+                const cellWidth = maxWidth / cells.length;
+                setFont(undefined, parsed.bold);
+                ctx.fillStyle = '#000000';
+                
+                for (let ci = 0; ci < cells.length; ci++) {
+                  const cx = leftMargin + ci * cellWidth + 4 * scale;
+                  ctx.fillText(cells[ci].trim(), cx, y);
+                  // Cell borders
+                  ctx.strokeStyle = '#444444';
+                  ctx.lineWidth = 1 * scale;
+                  ctx.strokeRect(leftMargin + ci * cellWidth, y - 14 * scale, cellWidth, 19 * scale);
+                }
+                y += 19 * scale;
+              } else {
+                // Separator row (---) — just draw a line
+                y += 2 * scale;
+              }
+              continue;
+            }
             
             // Horizontal separator line
             if (parsed.isLine) {
@@ -471,33 +516,39 @@ const HandwritingOCR = () => {
               ctx.lineWidth = 1.5 * scale;
               ctx.beginPath();
               ctx.moveTo(leftMargin, y);
-              ctx.lineTo(canvas.width - leftMargin, y);
+              ctx.lineTo(canvas.width - rightMargin, y);
               ctx.stroke();
-              y += 10 * scale;
+              y += 8 * scale;
               continue;
             }
             
             // Extra vertical space
             if (parsed.isSpace) {
-              y += 14 * scale;
+              y += 12 * scale;
               continue;
             }
             
-            if (!parsed.text) {
-              y += 8 * scale;
+            if (!parsed.text && !parsed.rightText) {
+              y += 6 * scale;
               continue;
             }
             
             const sizeKey = (parsed.size || 'normal') as keyof typeof fontSizes;
             const lineHeight = lineHeights[sizeKey];
             const xStart = parsed.indent ? indentMargin : leftMargin;
-            const availWidth = parsed.indent ? maxWidth - 20 * scale : maxWidth;
+            const availWidth = parsed.indent ? maxWidth - 25 * scale : maxWidth;
             
             ctx.fillStyle = '#000000';
             setFont(parsed.size, parsed.bold);
-            
-            // Handle mixed left+right on same line (e.g. "Time: 3 Hours [RIGHT]Max Marks: 75[/RIGHT]")
-            // This is already parsed out, so just handle alignment
+
+            // Handle mixed left+right on same line
+            if (parsed.rightText && parsed.text) {
+              ctx.fillText(parsed.text, xStart, y);
+              const rightWidth = ctx.measureText(parsed.rightText).width;
+              ctx.fillText(parsed.rightText, canvas.width - rightMargin - rightWidth, y);
+              y += lineHeight;
+              continue;
+            }
             
             // Word wrap the text
             const words = parsed.text.split(' ');
@@ -520,7 +571,7 @@ const HandwritingOCR = () => {
               if (parsed.align === 'center') {
                 x = (canvas.width - ctx.measureText(wLine).width) / 2;
               } else if (parsed.align === 'right') {
-                x = canvas.width - leftMargin - ctx.measureText(wLine).width;
+                x = canvas.width - rightMargin - ctx.measureText(wLine).width;
               }
               
               ctx.fillText(wLine, x, y);
