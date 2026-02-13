@@ -83,33 +83,46 @@ async function uploadWorldPdfViaEdge(
 
 export const mockStorage = {
   async savePDF(pdf: Omit<PDFDocument, 'id'>, displayName?: string): Promise<PDFDocument> {
-    // Private PDFs: save entirely in localStorage
+    // Private PDFs: upload files to storage, save metadata in localStorage
     if (pdf.visibility === 'private') {
       const pdfId = `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
+      let storedDownloadUrl = pdf.downloadUrl;
+      let storedThumbnailUrl = pdf.thumbnailUrl;
+
+      // Upload PDF to storage under 'private/' folder (guest-accessible)
+      if (pdf.downloadUrl && pdf.downloadUrl.startsWith('data:')) {
+        try {
+          const pdfPath = `private/${pdfId}.pdf`;
+          storedDownloadUrl = await uploadToStorage('pdfs', pdfPath, pdf.downloadUrl);
+        } catch (err) {
+          console.error('Failed to upload private PDF to storage:', err);
+          throw new Error('Failed to save PDF. Please try again.');
+        }
+      }
+
+      // Upload thumbnail to storage
+      if (pdf.thumbnailUrl && pdf.thumbnailUrl.startsWith('data:')) {
+        try {
+          const thumbPath = `private/${pdfId}.jpg`;
+          storedThumbnailUrl = await uploadToStorage('thumbnails', thumbPath, pdf.thumbnailUrl);
+        } catch (err) {
+          console.warn('Failed to upload thumbnail, skipping:', err);
+          storedThumbnailUrl = undefined;
+        }
+      }
+
       const pdfs = this.getPDFs();
       const newPDF: PDFDocument = {
         ...pdf,
         id: pdfId,
-        downloadUrl: pdf.downloadUrl,
-        thumbnailUrl: pdf.thumbnailUrl,
+        downloadUrl: storedDownloadUrl,
+        thumbnailUrl: storedThumbnailUrl,
         isOCR: pdf.isOCR,
       };
 
       pdfs.push(newPDF);
-      
-      try {
-        localStorage.setItem(PDFS_KEY, JSON.stringify(pdfs));
-      } catch (storageError: any) {
-        // localStorage might be full - try to save without thumbnail
-        if (storageError.name === 'QuotaExceededError') {
-          newPDF.thumbnailUrl = undefined;
-          const reducedPdfs = [...pdfs.slice(0, -1), newPDF];
-          localStorage.setItem(PDFS_KEY, JSON.stringify(reducedPdfs));
-        } else {
-          throw storageError;
-        }
-      }
+      localStorage.setItem(PDFS_KEY, JSON.stringify(pdfs));
       
       return newPDF;
     }
