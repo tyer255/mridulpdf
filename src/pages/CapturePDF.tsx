@@ -20,6 +20,7 @@ import ImageFilterModal from '@/components/ImageFilterModal';
 import heic2any from 'heic2any';
 import { alertEvent } from '@/lib/preferences';
 import ExitConfirmDialog from '@/components/ExitConfirmDialog';
+import FeedbackDialog from '@/components/FeedbackDialog';
 import { useAuth } from '@/contexts/AuthContext';
 
 const CapturePDF = () => {
@@ -33,6 +34,8 @@ const CapturePDF = () => {
   const [addPageNumbers, setAddPageNumbers] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [createdPdfName, setCreatedPdfName] = useState('');
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const userId = useAnonymousUser();
@@ -341,7 +344,8 @@ const handleGallerySelection = async (e: React.ChangeEvent<HTMLInputElement>) =>
         description: `PDF created and saved as ${visibility}`
       });
 
-      navigate('/library');
+      setCreatedPdfName(pdfName.trim());
+      setShowFeedback(true);
     } catch (error: any) {
       console.error('Error creating PDF:', error);
       toast({
@@ -356,6 +360,14 @@ const handleGallerySelection = async (e: React.ChangeEvent<HTMLInputElement>) =>
 
   return (
     <div className="min-h-screen bg-background pb-20">
+      <FeedbackDialog
+        open={showFeedback}
+        onOpenChange={(open) => {
+          setShowFeedback(open);
+          if (!open) navigate('/library');
+        }}
+        pdfName={createdPdfName}
+      />
       <ExitConfirmDialog
         open={showExitDialog}
         onOpenChange={setShowExitDialog}

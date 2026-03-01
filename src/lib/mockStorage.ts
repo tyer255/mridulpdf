@@ -133,7 +133,14 @@ export const mockStorage = {
 
   getPDFs(): PDFDocument[] {
     const stored = localStorage.getItem(PDFS_KEY);
-    return stored ? JSON.parse(stored) : [];
+    if (!stored) return [];
+    const pdfs: PDFDocument[] = JSON.parse(stored);
+    // Resolve storage paths to full URLs for display
+    return pdfs.map(pdf => ({
+      ...pdf,
+      downloadUrl: pdf.downloadUrl ? getStorageUrl('pdfs', pdf.downloadUrl) : pdf.downloadUrl,
+      thumbnailUrl: pdf.thumbnailUrl ? getStorageUrl('thumbnails', pdf.thumbnailUrl) : pdf.thumbnailUrl,
+    }));
   },
 
   async getWorldPDFs(limit: number = 50, offset: number = 0): Promise<PDFDocument[]> {

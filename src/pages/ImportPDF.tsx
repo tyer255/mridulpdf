@@ -13,6 +13,7 @@ import { PDFTag } from '@/types/pdf';
 import TagSelector from '@/components/TagSelector';
 import { alertEvent } from '@/lib/preferences';
 import ExitConfirmDialog from '@/components/ExitConfirmDialog';
+import FeedbackDialog from '@/components/FeedbackDialog';
 import { useAuth } from '@/contexts/AuthContext';
 
 const ImportPDF = () => {
@@ -22,6 +23,8 @@ const ImportPDF = () => {
   const [tags, setTags] = useState<PDFTag[]>([]);
   const [uploading, setUploading] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [createdPdfName, setCreatedPdfName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const userId = useAnonymousUser();
   const { isAuthenticated } = useAuth();
@@ -125,8 +128,8 @@ const ImportPDF = () => {
           description: `PDF uploaded as ${visibility}`
         });
 
-        navigate('/library');
-        setUploading(false);
+        setCreatedPdfName(pdfName.trim());
+        setShowFeedback(true);
       };
       
       reader.onerror = () => {
@@ -152,6 +155,14 @@ const ImportPDF = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
+      <FeedbackDialog
+        open={showFeedback}
+        onOpenChange={(open) => {
+          setShowFeedback(open);
+          if (!open) navigate('/library');
+        }}
+        pdfName={createdPdfName}
+      />
       <ExitConfirmDialog
         open={showExitDialog}
         onOpenChange={setShowExitDialog}
