@@ -10,7 +10,8 @@ import {
   Share2, 
   FileStack,
   Sparkles,
-  Loader2
+  Loader2,
+  Eye
 } from 'lucide-react';
 import {
   Sheet,
@@ -244,6 +245,27 @@ const PDFDetailsSheet = ({
                     )}
                   </Button>
                 )}
+
+                {/* Quick View - open PDF in browser */}
+                <Button
+                  type="button"
+                  className="w-full h-14 text-base font-semibold rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white shadow-lg"
+                  onClick={async () => {
+                    if (!pdf) return;
+                    try {
+                      let downloadUrl = pdf.downloadUrl || await mockStorage.getPDFDownloadUrl(pdf.id);
+                      const response = await fetch(downloadUrl);
+                      const blob = await response.blob();
+                      const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+                      window.open(url, '_blank');
+                    } catch (err) {
+                      console.error('Quick view error:', err);
+                    }
+                  }}
+                >
+                  <Eye className="w-5 h-5 mr-2" />
+                  Quick View
+                </Button>
 
                 <Button 
                   type="button"
