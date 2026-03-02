@@ -6,7 +6,7 @@ const BottomNav = () => {
   const location = useLocation();
   
   // Hide bottom nav on login page and splash screen
-  if (location.pathname === '/login' || location.pathname === '/') {
+  if (location.pathname === '/login' || location.pathname === '/' || location.pathname === '/landing') {
     return null;
   }
   

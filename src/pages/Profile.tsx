@@ -25,7 +25,7 @@ const Profile = () => {
 
   useEffect(() => {
     if (!loading && !userId) {
-      navigate('/login');
+      navigate('/landing');
       return;
     }
 
@@ -65,7 +65,7 @@ const Profile = () => {
       title: "Logged out",
       description: "You have been logged out successfully"
     });
-    navigate('/login');
+    navigate('/landing');
   };
 
   const handleAvatarClick = () => {

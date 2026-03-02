@@ -57,7 +57,8 @@ const App = () => {
 
     // Ask for permission after 3 seconds if needed
     const timer = setTimeout(() => {
-      if (shouldAskPermission()) {
+      const authShellRoutes = ['/', '/landing', '/login'];
+      if (!authShellRoutes.includes(window.location.pathname) && shouldAskPermission()) {
         setShowPermissionDialog(true);
       }
     }, 3000);
@@ -94,10 +95,12 @@ const App = () => {
             <BottomNav />
             
             {/* Notification Permission Dialog */}
-            <NotificationPermission 
-              open={showPermissionDialog} 
-              onOpenChange={setShowPermissionDialog} 
-            />
+            {!['/', '/landing', '/login'].includes(window.location.pathname) && (
+              <NotificationPermission 
+                open={showPermissionDialog} 
+                onOpenChange={setShowPermissionDialog} 
+              />
+            )}
             
             {/* World Upload Notification */}
             {notification && (
