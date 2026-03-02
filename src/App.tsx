@@ -15,6 +15,7 @@ import { shouldAskPermission } from "./lib/notifications";
 import { applyTheme, getAppPreferences } from "./lib/preferences";
 
 // Lazy load heavy pages for better performance
+const Landing = lazy(() => import("./pages/Landing"));
 const AddPDF = lazy(() => import("./pages/AddPDF"));
 const Library = lazy(() => import("./pages/Library"));
 const CapturePDF = lazy(() => import("./pages/CapturePDF"));
@@ -74,6 +75,7 @@ const App = () => {
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/" element={<SplashScreen />} />
+                <Route path="/landing" element={<Landing />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/home" element={<Index />} />
                 <Route path="/add" element={<AddPDF />} />

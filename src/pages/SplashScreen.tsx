@@ -12,7 +12,7 @@ const SplashScreen = () => {
     // Check if splash has been shown this session
     const splashShown = sessionStorage.getItem('splashShown');
     if (splashShown) {
-      navigate('/home', { replace: true });
+      navigate('/landing', { replace: true });
       return;
     }
 
@@ -39,13 +39,13 @@ const SplashScreen = () => {
     if (!hasPlayed) {
       setHasPlayed(true);
       sessionStorage.setItem('splashShown', 'true');
-      navigate('/home', { replace: true });
+      navigate('/landing', { replace: true });
     }
   };
 
   const handleVideoError = () => {
     sessionStorage.setItem('splashShown', 'true');
-    navigate('/home', { replace: true });
+    navigate('/landing', { replace: true });
   };
 
   return (
