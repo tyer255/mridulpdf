@@ -34,7 +34,7 @@ const Profile = () => {
     const loadPDFCount = async () => {
       if (!userId) return;
       const worldPDFs = await mockStorage.getWorldPDFs();
-      const privatePDFs = mockStorage.getUserPDFs(userId);
+      const privatePDFs = await mockStorage.getUserPDFs(userId);
       const userWorldPDFs = worldPDFs.filter(pdf => pdf.userId === userId);
       setTotalPDFs(userWorldPDFs.length + privatePDFs.length);
     };
