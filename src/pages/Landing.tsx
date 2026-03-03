@@ -126,20 +126,43 @@ const Landing = () => {
 
       {/* Hero Section */}
       <section className="relative z-10 flex flex-col items-center justify-center text-center px-6 pt-20 pb-32">
-        {/* Orbiting Elements */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] pointer-events-none">
+        {/* Orbiting Elements around the logo */}
+        <div className="absolute top-[calc(50%-80px)] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] h-[320px] pointer-events-none">
+          {/* Blue dot - orbit clockwise */}
           <div className="animate-orbit-1 absolute top-1/2 left-1/2">
             <div className="w-3 h-3 bg-blue-400 rounded-full shadow-lg shadow-blue-400/50" />
           </div>
+          {/* Purple dot - orbit counter-clockwise */}
           <div className="animate-orbit-2 absolute top-1/2 left-1/2">
-            <div className="w-2 h-2 bg-purple-400 rounded-full shadow-lg shadow-purple-400/50" />
+            <div className="w-2.5 h-2.5 bg-purple-400 rounded-full shadow-lg shadow-purple-400/50" />
           </div>
+          {/* Cyan dot - orbit clockwise with delay */}
           <div className="animate-orbit-1 absolute top-1/2 left-1/2" style={{ animationDelay: '-5s' }}>
             <div className="w-2 h-2 bg-cyan-400 rounded-full shadow-lg shadow-cyan-400/50" />
           </div>
+          {/* Small pink dot - orbit counter-clockwise with delay */}
+          <div className="animate-orbit-3 absolute top-1/2 left-1/2">
+            <div className="w-2 h-2 bg-pink-400 rounded-full shadow-lg shadow-pink-400/50" />
+          </div>
+          {/* Tiny blue dot - fast orbit */}
+          <div className="animate-orbit-4 absolute top-1/2 left-1/2">
+            <div className="w-1.5 h-1.5 bg-blue-300 rounded-full shadow-lg shadow-blue-300/50" />
+          </div>
+          {/* File icon orbiting */}
+          <div className="animate-orbit-5 absolute top-1/2 left-1/2">
+            <svg className="w-4 h-4 text-purple-300/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+            </svg>
+          </div>
+          {/* Star icon orbiting */}
+          <div className="animate-orbit-1 absolute top-1/2 left-1/2" style={{ animationDelay: '-10s' }}>
+            <svg className="w-3 h-3 text-yellow-300/50" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+            </svg>
+          </div>
         </div>
 
-        {/* Floating PDF Icon */}
+        {/* Floating Logo Icon */}
         <div className="animate-float mb-12">
           <div className="relative">
             <div className="absolute inset-0 bg-blue-500/20 rounded-3xl blur-2xl scale-150" />
@@ -147,7 +170,7 @@ const Landing = () => {
               <svg className="w-10 h-10 text-blue-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
               </svg>
-              <div className="text-[10px] font-bold text-blue-300 tracking-wider">PDF</div>
+              <div className="text-[9px] font-bold text-blue-300 tracking-wider leading-tight text-center">Mridul PDF</div>
             </div>
           </div>
         </div>
