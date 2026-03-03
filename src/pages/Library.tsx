@@ -36,7 +36,7 @@ const Library = () => {
     if (!userId) return;
     
     try {
-      const privatePDFs = mockStorage.getUserPDFs(userId);
+      const privatePDFs = await mockStorage.getUserPDFs(userId);
       const allWorldPDFs = await mockStorage.getWorldPDFs();
       const userWorldPDFs = allWorldPDFs.filter(pdf => pdf.userId === userId);
       const allPDFs = [...privatePDFs, ...userWorldPDFs].sort((a, b) => b.timestamp - a.timestamp);
