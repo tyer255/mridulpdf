@@ -337,6 +337,18 @@ const Landing = () => {
           from { transform: rotate(360deg) translateX(150px) rotate(-360deg); }
           to { transform: rotate(0deg) translateX(150px) rotate(0deg); }
         }
+        @keyframes orbit-mid {
+          from { transform: rotate(180deg) translateX(100px) rotate(-180deg); }
+          to { transform: rotate(540deg) translateX(100px) rotate(-540deg); }
+        }
+        @keyframes orbit-small {
+          from { transform: rotate(90deg) translateX(80px) rotate(-90deg); }
+          to { transform: rotate(450deg) translateX(80px) rotate(-450deg); }
+        }
+        @keyframes orbit-wide {
+          from { transform: rotate(270deg) translateX(140px) rotate(-270deg); }
+          to { transform: rotate(630deg) translateX(140px) rotate(-630deg); }
+        }
         @keyframes modalIn {
           from { opacity: 0; transform: scale(0.95) translateY(10px); }
           to { opacity: 1; transform: scale(1) translateY(0); }
@@ -344,6 +356,9 @@ const Landing = () => {
         .animate-float { animation: float 6s ease-in-out infinite; }
         .animate-orbit-1 { animation: orbit 15s linear infinite; }
         .animate-orbit-2 { animation: orbit-reverse 20s linear infinite; }
+        .animate-orbit-3 { animation: orbit-mid 18s linear infinite; }
+        .animate-orbit-4 { animation: orbit-small 10s linear infinite; }
+        .animate-orbit-5 { animation: orbit-wide 25s linear infinite; }
         .animate-modal-in { animation: modalIn 0.3s ease-out; }
         .bg-grid {
           background-size: 50px 50px;

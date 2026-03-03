@@ -243,22 +243,22 @@ const CapturePDF = () => {
 
           {/* Take a Photo Card */}
           <button onClick={handleCapture} className="w-full group">
-            <div className="glass-card rounded-2xl p-8 flex flex-col items-center gap-3 hover:border-blue-500/30 transition-all">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Camera className="w-8 h-8 text-blue-400" />
+            <div className="glass-card rounded-2xl p-10 flex flex-col items-center gap-4 hover:border-blue-500/30 transition-all">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500/15 to-blue-600/10 border border-white/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Camera className="w-10 h-10 text-blue-400" />
               </div>
-              <h2 className="text-lg font-bold text-white">Take a Photo</h2>
+              <h2 className="text-xl font-bold text-white">Take a Photo</h2>
               <p className="text-sm text-gray-400">Use your camera to scan a document.</p>
             </div>
           </button>
 
           {/* Select from Gallery Card */}
           <button onClick={handleGallerySelect} className="w-full group">
-            <div className="glass-card rounded-2xl p-8 flex flex-col items-center gap-3 hover:border-blue-500/30 transition-all">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <ImageIcon className="w-8 h-8 text-blue-400" />
+            <div className="glass-card rounded-2xl p-10 flex flex-col items-center gap-4 hover:border-blue-500/30 transition-all">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500/15 to-blue-600/10 border border-white/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <ImageIcon className="w-10 h-10 text-blue-400" />
               </div>
-              <h2 className="text-lg font-bold text-white">Select from Gallery</h2>
+              <h2 className="text-xl font-bold text-white">Select from Gallery</h2>
               <p className="text-sm text-gray-400">Pick an image from your photos.</p>
             </div>
           </button>
