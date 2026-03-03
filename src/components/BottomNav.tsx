@@ -20,7 +20,7 @@ const BottomNav = () => {
   const navItems = [
     { path: '/home', icon: Home, label: 'Home' },
     { path: '/add', icon: PlusCircle, label: 'Create' },
-    { path: '/library', icon: Lock, label: 'Private PDFs' },
+    { path: '/library', icon: Lock, label: 'My PDFs' },
     { path: '/profile', icon: User, label: 'Profile' },
   ];
 
