@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { PDFDocument } from '@/types/pdf';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -135,7 +136,23 @@ const PDFDetailsSheet = ({
     setLoadingContext(true);
     setAiPdfName(capturedPdfName);
 
-    const storedText = localStorage.getItem(`ocr_text_${capturedPdfId}`);
+    // Try localStorage first (owner), then fetch from cloud storage (other users)
+    let storedText = localStorage.getItem(`ocr_text_${capturedPdfId}`);
+    
+    if (!storedText) {
+      try {
+        const ocrPath = `ocr_texts/${capturedPdfId}.txt`;
+        const { data } = await supabase.storage.from('pdfs').download(ocrPath);
+        if (data) {
+          storedText = await data.text();
+          // Cache locally for future use
+          try { localStorage.setItem(`ocr_text_${capturedPdfId}`, storedText); } catch {}
+        }
+      } catch (e) {
+        console.warn('Could not fetch OCR text from cloud:', e);
+      }
+    }
+    
     setPdfContext(storedText || '(OCR text not available for this document)');
 
     // Close sheet first, then open AI chat after overlay animation finishes
@@ -210,16 +227,38 @@ const PDFDetailsSheet = ({
 
               {/* Uploader Information */}
               <div className="py-5 border-b border-border">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-full bg-muted/30">
-                    <User className="w-5 h-5 text-muted-foreground" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-full bg-muted/30">
+                      <User className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Uploaded by</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {displayName || 'Guest User'}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Uploaded by</p>
-                    <p className="text-sm font-medium text-foreground">
-                      {displayName || 'Guest User'}
-                    </p>
-                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white px-4 h-9"
+                    onClick={async () => {
+                      if (!pdf) return;
+                      try {
+                        let downloadUrl = pdf.downloadUrl || await mockStorage.getPDFDownloadUrl(pdf.id);
+                        const response = await fetch(downloadUrl);
+                        const blob = await response.blob();
+                        const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+                        window.open(url, '_blank');
+                      } catch (err) {
+                        console.error('Quick view error:', err);
+                      }
+                    }}
+                  >
+                    <Eye className="w-4 h-4 mr-1.5" />
+                    Quick View
+                  </Button>
                 </div>
               </div>
 
@@ -246,26 +285,6 @@ const PDFDetailsSheet = ({
                   </Button>
                 )}
 
-                {/* Quick View - open PDF in browser */}
-                <Button
-                  type="button"
-                  className="w-full h-14 text-base font-semibold rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white shadow-lg"
-                  onClick={async () => {
-                    if (!pdf) return;
-                    try {
-                      let downloadUrl = pdf.downloadUrl || await mockStorage.getPDFDownloadUrl(pdf.id);
-                      const response = await fetch(downloadUrl);
-                      const blob = await response.blob();
-                      const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
-                      window.open(url, '_blank');
-                    } catch (err) {
-                      console.error('Quick view error:', err);
-                    }
-                  }}
-                >
-                  <Eye className="w-5 h-5 mr-2" />
-                  Quick View
-                </Button>
 
                 <Button 
                   type="button"
