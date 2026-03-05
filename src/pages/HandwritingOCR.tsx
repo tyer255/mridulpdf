@@ -646,6 +646,15 @@ const HandwritingOCR = () => {
         console.warn('Could not save OCR text for AI:', e);
       }
 
+      // Also upload OCR text to cloud storage so other users can use Ask AI
+      try {
+        const ocrBlob = new Blob([fullOCRText], { type: 'text/plain' });
+        const ocrPath = `ocr_texts/${savedPdf.id}.txt`;
+        await supabase.storage.from('pdfs').upload(ocrPath, ocrBlob, { upsert: true, contentType: 'text/plain' });
+      } catch (e) {
+        console.warn('Could not upload OCR text to cloud:', e);
+      }
+
       toast({ title: "PDF created successfully" });
       speak("PDF created successfully");
       navigate('/library');
