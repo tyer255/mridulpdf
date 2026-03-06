@@ -13,6 +13,7 @@ import { getAppPreferences } from '@/lib/preferences';
 import { jsPDF } from 'jspdf';
 import { supabase } from '@/integrations/supabase/client';
 import { useAnonymousUser } from '@/hooks/useAnonymousUser';
+import { useAuth } from '@/contexts/AuthContext';
 import ExitConfirmDialog from '@/components/ExitConfirmDialog';
 import CopyButton from '@/components/CopyButton';
 
@@ -35,6 +36,7 @@ const HandwritingOCR = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const userId = useAnonymousUser();
+  const { getUserDisplayName: getAuthDisplayName } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -412,6 +414,17 @@ const HandwritingOCR = () => {
     if (text.includes('[HEADER]')) { tags.isHeader = true; text = text.replace(/\[HEADER\]/g, '').replace(/\[\/HEADER\]/g, ''); }
     if (text.includes('[FOOTER]')) { tags.isFooter = true; tags.size = 'small'; text = text.replace(/\[FOOTER\]/g, '').replace(/\[\/FOOTER\]/g, ''); }
 
+    // Final cleanup: remove any remaining tags that might have been missed
+    text = text.replace(/\[\/?(?:CENTER|RIGHT|H[1-3]|BOLD|SMALL|INDENT|HEADER|FOOTER|LINE|SPACE|TABLE)\]/g, '');
+
+    // Fix merged words: insert space before capital letters in camelCase-like merges
+    // e.g. "fromMonday10AM" → "from Monday 10 AM"
+    text = text
+      .replace(/([a-z])([A-Z])/g, '$1 $2')           // lowerUpper → lower Upper
+      .replace(/([a-zA-Z])(\d)/g, '$1 $2')            // word123 → word 123
+      .replace(/(\d)([a-zA-Z])/g, '$1 $2')            // 123word → 123 word
+      .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2');     // AMMonday → AM Monday
+
     return { text: text.trim(), ...tags };
   };
 
@@ -637,7 +650,7 @@ const HandwritingOCR = () => {
         pageCount: extractedPages.length,
         size: pdfBlob.size,
         isOCR: true,
-      });
+      }, getAuthDisplayName());
 
       // Store OCR text in localStorage for AI chat
       try {
