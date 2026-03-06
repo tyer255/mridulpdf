@@ -22,6 +22,7 @@ const CapturePDF = lazy(() => import("./pages/CapturePDF"));
 const ImportPDF = lazy(() => import("./pages/ImportPDF"));
 const HandwritingOCR = lazy(() => import("./pages/HandwritingOCR"));
 const CompressPDF = lazy(() => import("./pages/CompressPDF"));
+const TextToPDF = lazy(() => import("./pages/TextToPDF"));
 const Login = lazy(() => import("./pages/Login"));
 const Profile = lazy(() => import("./pages/Profile"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -85,6 +86,7 @@ const App = () => {
                 <Route path="/import" element={<ImportPDF />} />
                 <Route path="/ocr" element={<HandwritingOCR />} />
                 <Route path="/compress" element={<CompressPDF />} />
+                <Route path="/text-to-pdf" element={<TextToPDF />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/notifications" element={<NotificationSettings />} />
                 <Route path="/appearance" element={<AppearanceSettings />} />
