@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Camera, Upload, ScanText, ChevronRight, Sparkles, Zap, FileDown } from 'lucide-react';
+import { Camera, Upload, ScanText, ChevronRight, Sparkles, Zap, FileDown, FileText } from 'lucide-react';
 import Header from '@/components/Header';
 
 const AddPDF = () => {
@@ -30,6 +30,13 @@ const AddPDF = () => {
       title: 'Compress PDF',
       description: 'Reduce PDF file size without losing quality',
       path: '/compress',
+      badge: 'NEW',
+    },
+    {
+      icon: FileText,
+      title: 'Text to PDF',
+      description: 'Type or paste text and convert it into a PDF',
+      path: '/text-to-pdf',
       badge: 'NEW',
     },
   ];
