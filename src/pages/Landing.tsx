@@ -60,12 +60,38 @@ const Landing = () => {
     }
     setEmailLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-      if (error) {
-        toast({ title: "Login Failed", description: error.message, variant: "destructive" });
+      if (authMode === 'signup') {
+        if (password.length < 6) {
+          toast({ title: "Error", description: "Password must be at least 6 characters", variant: "destructive" });
+          setEmailLoading(false);
+          return;
+        }
+        if (password !== confirmPassword) {
+          toast({ title: "Error", description: "Passwords do not match", variant: "destructive" });
+          setEmailLoading(false);
+          return;
+        }
+        const { error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: { emailRedirectTo: `${window.location.origin}/home` },
+        });
+        if (error) {
+          toast({ title: "Signup Failed", description: error.message, variant: "destructive" });
+        } else {
+          toast({ title: "Account Created!", description: "Please check your email to verify your account before logging in." });
+          setAuthMode('login');
+          setPassword('');
+          setConfirmPassword('');
+        }
       } else {
-        toast({ title: "Welcome back!", description: "Logged in successfully" });
-        navigate('/home');
+        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+        if (error) {
+          toast({ title: "Login Failed", description: error.message, variant: "destructive" });
+        } else {
+          toast({ title: "Welcome back!", description: "Logged in successfully" });
+          navigate('/home');
+        }
       }
     } catch {
       toast({ title: "Error", description: "Something went wrong", variant: "destructive" });
