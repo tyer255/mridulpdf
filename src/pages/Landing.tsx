@@ -16,8 +16,10 @@ const Landing = () => {
   const { toast } = useToast();
 
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
@@ -58,12 +60,38 @@ const Landing = () => {
     }
     setEmailLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-      if (error) {
-        toast({ title: "Login Failed", description: error.message, variant: "destructive" });
+      if (authMode === 'signup') {
+        if (password.length < 6) {
+          toast({ title: "Error", description: "Password must be at least 6 characters", variant: "destructive" });
+          setEmailLoading(false);
+          return;
+        }
+        if (password !== confirmPassword) {
+          toast({ title: "Error", description: "Passwords do not match", variant: "destructive" });
+          setEmailLoading(false);
+          return;
+        }
+        const { error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: { emailRedirectTo: `${window.location.origin}/home` },
+        });
+        if (error) {
+          toast({ title: "Signup Failed", description: error.message, variant: "destructive" });
+        } else {
+          toast({ title: "Account Created!", description: "Please check your email to verify your account before logging in." });
+          setAuthMode('login');
+          setPassword('');
+          setConfirmPassword('');
+        }
       } else {
-        toast({ title: "Welcome back!", description: "Logged in successfully" });
-        navigate('/home');
+        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+        if (error) {
+          toast({ title: "Login Failed", description: error.message, variant: "destructive" });
+        } else {
+          toast({ title: "Welcome back!", description: "Logged in successfully" });
+          navigate('/home');
+        }
       }
     } catch {
       toast({ title: "Error", description: "Something went wrong", variant: "destructive" });
@@ -272,6 +300,22 @@ const Landing = () => {
             <div className="flex-grow border-t border-gray-700" />
           </div>
 
+          {/* Login/Signup Toggle */}
+          <div className="flex rounded-xl overflow-hidden border border-gray-700 mb-4">
+            <button
+              onClick={() => { setAuthMode('login'); setConfirmPassword(''); }}
+              className={`flex-1 py-2.5 text-sm font-semibold transition-all ${authMode === 'login' ? 'bg-blue-600 text-white' : 'bg-transparent text-gray-400 hover:text-white'}`}
+            >
+              Login
+            </button>
+            <button
+              onClick={() => setAuthMode('signup')}
+              className={`flex-1 py-2.5 text-sm font-semibold transition-all ${authMode === 'signup' ? 'bg-blue-600 text-white' : 'bg-transparent text-gray-400 hover:text-white'}`}
+            >
+              Sign Up
+            </button>
+          </div>
+
           {/* Email & Password */}
           <form onSubmit={handleEmailLogin} className="space-y-4">
             <div>
@@ -299,7 +343,7 @@ const Landing = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
+                  placeholder={authMode === 'signup' ? 'Min 6 characters' : 'Enter your password'}
                   className="input-field w-full pl-11 pr-10 py-3.5 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500/50"
                 />
                 <button
@@ -311,13 +355,33 @@ const Landing = () => {
                 </button>
               </div>
             </div>
+            {authMode === 'signup' && (
+              <div>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Lock className="w-4 h-4 text-gray-500" />
+                  </div>
+                  <input
+                    type="password"
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm password"
+                    className="input-field w-full pl-11 pr-4 py-3.5 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500/50"
+                  />
+                </div>
+              </div>
+            )}
             <button
               type="submit"
               disabled={emailLoading}
               className="w-full shimmer-btn py-3.5 rounded-xl text-white font-bold text-lg hover:shadow-[0_0_25px_rgba(59,130,246,0.5)] transition-all active:scale-[0.98] mt-2 disabled:opacity-50"
             >
-              {emailLoading ? 'Authenticating...' : 'Sign In'}
+              {emailLoading ? 'Please wait...' : authMode === 'signup' ? 'Create Account' : 'Sign In'}
             </button>
+            {authMode === 'signup' && (
+              <p className="text-xs text-gray-500 text-center">A verification email will be sent to confirm your account</p>
+            )}
           </form>
 
           {/* Guest Login */}
