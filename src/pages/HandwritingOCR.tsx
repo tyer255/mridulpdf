@@ -373,7 +373,7 @@ const HandwritingOCR = () => {
     setStep('results');
   };
 
-  // Parse layout tags from OCR output
+  // Parse layout tags from OCR output — strips ALL tags from visible text
   const parseLayoutLine = (line: string) => {
     const tags: { align?: 'center' | 'right'; size?: 'h1' | 'h2' | 'h3' | 'small'; bold?: boolean; indent?: boolean; isLine?: boolean; isSpace?: boolean; isHeader?: boolean; isFooter?: boolean; isTable?: boolean; rightText?: string } = {};
     let text = line;
@@ -382,12 +382,11 @@ const HandwritingOCR = () => {
     if (text.trim() === '[SPACE]') return { text: '', ...tags, isSpace: true };
     if (text.trim() === '[TABLE]' || text.trim() === '[/TABLE]') return { text: '', ...tags, isTable: true };
 
-    // Extract right-aligned portion from same line (e.g. "Time: 3 Hours[RIGHT]Max Marks: 75[/RIGHT]")
+    // Extract right-aligned portion from same line
     const rightMatch = text.match(/\[RIGHT\](.*?)\[\/RIGHT\]/);
     if (rightMatch) {
       tags.rightText = rightMatch[1].trim();
       text = text.replace(/\[RIGHT\].*?\[\/RIGHT\]/, '');
-      // If remaining text is empty, treat entire line as right-aligned
       if (!text.trim()) {
         tags.align = 'right';
         text = tags.rightText;
@@ -395,7 +394,7 @@ const HandwritingOCR = () => {
       }
     }
 
-    // Alignment (full line)
+    // Alignment
     if (text.includes('[CENTER]')) { tags.align = 'center'; text = text.replace(/\[CENTER\]/g, '').replace(/\[\/CENTER\]/g, ''); }
 
     // Size
@@ -414,16 +413,20 @@ const HandwritingOCR = () => {
     if (text.includes('[HEADER]')) { tags.isHeader = true; text = text.replace(/\[HEADER\]/g, '').replace(/\[\/HEADER\]/g, ''); }
     if (text.includes('[FOOTER]')) { tags.isFooter = true; tags.size = 'small'; text = text.replace(/\[FOOTER\]/g, '').replace(/\[\/FOOTER\]/g, ''); }
 
-    // Final cleanup: remove any remaining tags that might have been missed
-    text = text.replace(/\[\/?(?:CENTER|RIGHT|H[1-3]|BOLD|SMALL|INDENT|HEADER|FOOTER|LINE|SPACE|TABLE)\]/g, '');
+    // AGGRESSIVE final cleanup: remove ANY remaining square-bracket tags
+    text = text.replace(/\[\/?[A-Z][A-Z0-9_]*\]/g, '');
 
-    // Fix merged words: insert space before capital letters in camelCase-like merges
-    // e.g. "fromMonday10AM" → "from Monday 10 AM"
+    // Fix merged words
     text = text
-      .replace(/([a-z])([A-Z])/g, '$1 $2')           // lowerUpper → lower Upper
-      .replace(/([a-zA-Z])(\d)/g, '$1 $2')            // word123 → word 123
-      .replace(/(\d)([a-zA-Z])/g, '$1 $2')            // 123word → 123 word
-      .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2');     // AMMonday → AM Monday
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/([a-zA-Z])(\d)/g, '$1 $2')
+      .replace(/(\d)([a-zA-Z])/g, '$1 $2')
+      .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2');
+
+    // Also strip tags from rightText
+    if (tags.rightText) {
+      tags.rightText = tags.rightText.replace(/\[\/?[A-Z][A-Z0-9_]*\]/g, '').trim();
+    }
 
     return { text: text.trim(), ...tags };
   };
