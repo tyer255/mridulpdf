@@ -431,7 +431,7 @@ const HandwritingOCR = () => {
     return { text: text.trim(), ...tags };
   };
 
-  // Create PDF from extracted text - layout-aware rendering
+  // Create PDF from extracted text - layout-aware rendering with dynamic sizing
   const createPDF = async () => {
     if (extractedPages.length === 0) return;
     
@@ -452,147 +452,235 @@ const HandwritingOCR = () => {
         
         const canvas = document.createElement('canvas');
         const scale = 3;
-        canvas.width = contentWidth * scale * 3.78;
-        canvas.height = contentHeight * scale * 3.78;
+        const pxPerMm = 3.78;
+        canvas.width = contentWidth * scale * pxPerMm;
+        canvas.height = contentHeight * scale * pxPerMm;
         const ctx = canvas.getContext('2d');
         
-        if (ctx) {
-          // White background
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          
-          const baseFontSize = 13 * scale;
-          const maxWidth = canvas.width - 50 * scale;
-          const leftMargin = 25 * scale;
-          const rightMargin = 25 * scale;
-          const indentMargin = 50 * scale;
-          let y = 25 * scale;
-          
+        if (!ctx) continue;
+
+        // White background
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        const leftMargin = 25 * scale;
+        const rightMargin = 25 * scale;
+        const topMargin = 25 * scale;
+        const indentMargin = 50 * scale;
+        const maxWidth = canvas.width - leftMargin - rightMargin;
+        
+        const fontFamily = '"Noto Sans Devanagari", "Mangal", "Arial Unicode MS", sans-serif';
+
+        // --- First pass: measure total height needed ---
+        const measureLines = (baseFontSize: number) => {
           const fontSizes = {
-            h1: 20 * scale,
-            h2: 17 * scale,
-            h3: 15 * scale,
-            small: 10 * scale,
+            h1: baseFontSize * 1.54,
+            h2: baseFontSize * 1.31,
+            h3: baseFontSize * 1.15,
+            small: baseFontSize * 0.77,
             normal: baseFontSize,
           };
-
           const lineHeights = {
-            h1: 28 * scale,
-            h2: 24 * scale,
-            h3: 22 * scale,
-            small: 15 * scale,
-            normal: 19 * scale,
+            h1: fontSizes.h1 * 1.4,
+            h2: fontSizes.h2 * 1.4,
+            h3: fontSizes.h3 * 1.4,
+            small: fontSizes.small * 1.5,
+            normal: fontSizes.normal * 1.46,
           };
 
-          const setFont = (size: string | undefined, bold: boolean | undefined) => {
-            const fontSize = fontSizes[(size as keyof typeof fontSizes) || 'normal'];
-            const weight = bold ? 'bold' : 'normal';
-            ctx.font = `${weight} ${fontSize}px "Noto Sans Devanagari", "Mangal", "Arial Unicode MS", sans-serif`;
-          };
-          
+          let totalHeight = topMargin;
           const lines = page.text.split('\n');
           let inTable = false;
-          
+
           for (const rawLine of lines) {
             const parsed = parseLayoutLine(rawLine);
-            
-            // Table markers
-            if (parsed.isTable) {
-              inTable = !inTable;
-              continue;
-            }
+            if (parsed.isTable) { inTable = !inTable; continue; }
 
-            // Table row rendering
             if (inTable && parsed.text.includes('|')) {
               const cells = parsed.text.split('|').filter(c => c.trim() !== '');
               if (cells.length > 0 && !cells[0].match(/^[\s-]+$/)) {
-                const cellWidth = maxWidth / cells.length;
-                setFont(undefined, parsed.bold);
-                ctx.fillStyle = '#000000';
-                
-                for (let ci = 0; ci < cells.length; ci++) {
-                  const cx = leftMargin + ci * cellWidth + 4 * scale;
-                  ctx.fillText(cells[ci].trim(), cx, y);
-                  // Cell borders
-                  ctx.strokeStyle = '#444444';
-                  ctx.lineWidth = 1 * scale;
-                  ctx.strokeRect(leftMargin + ci * cellWidth, y - 14 * scale, cellWidth, 19 * scale);
-                }
-                y += 19 * scale;
+                totalHeight += lineHeights.normal;
               } else {
-                // Separator row (---) — just draw a line
-                y += 2 * scale;
+                totalHeight += 2 * scale;
               }
               continue;
             }
-            
-            // Horizontal separator line
-            if (parsed.isLine) {
-              ctx.strokeStyle = '#333333';
-              ctx.lineWidth = 1.5 * scale;
-              ctx.beginPath();
-              ctx.moveTo(leftMargin, y);
-              ctx.lineTo(canvas.width - rightMargin, y);
-              ctx.stroke();
-              y += 8 * scale;
-              continue;
-            }
-            
-            // Extra vertical space
-            if (parsed.isSpace) {
-              y += 12 * scale;
-              continue;
-            }
-            
-            if (!parsed.text && !parsed.rightText) {
-              y += 6 * scale;
-              continue;
-            }
-            
-            const sizeKey = (parsed.size || 'normal') as keyof typeof fontSizes;
-            const lineHeight = lineHeights[sizeKey];
-            const xStart = parsed.indent ? indentMargin : leftMargin;
-            const availWidth = parsed.indent ? maxWidth - 25 * scale : maxWidth;
-            
-            ctx.fillStyle = '#000000';
-            setFont(parsed.size, parsed.bold);
 
-            // Handle mixed left+right on same line
+            if (parsed.isLine) { totalHeight += 8 * scale; continue; }
+            if (parsed.isSpace) { totalHeight += 12 * scale; continue; }
+            if (!parsed.text && !parsed.rightText) { totalHeight += 6 * scale; continue; }
+
+            const sizeKey = (parsed.size || 'normal') as keyof typeof fontSizes;
+            const lh = lineHeights[sizeKey];
+            const fs = fontSizes[sizeKey];
+            const weight = parsed.bold ? 'bold' : 'normal';
+            ctx.font = `${weight} ${fs}px ${fontFamily}`;
+            const availW = parsed.indent ? maxWidth - 25 * scale : maxWidth;
+
             if (parsed.rightText && parsed.text) {
-              ctx.fillText(parsed.text, xStart, y);
-              const rightWidth = ctx.measureText(parsed.rightText).width;
-              ctx.fillText(parsed.rightText, canvas.width - rightMargin - rightWidth, y);
-              y += lineHeight;
+              totalHeight += lh;
               continue;
             }
-            
-            // Word wrap the text
+
+            // Word wrap count
             const words = parsed.text.split(' ');
             let currentLine = '';
-            const wrappedLines: string[] = [];
-            
+            let wrappedCount = 0;
             for (const word of words) {
               const testLine = currentLine + (currentLine ? ' ' : '') + word;
-              if (ctx.measureText(testLine).width > availWidth && currentLine) {
-                wrappedLines.push(currentLine);
+              if (ctx.measureText(testLine).width > availW && currentLine) {
+                wrappedCount++;
                 currentLine = word;
               } else {
                 currentLine = testLine;
               }
             }
-            if (currentLine) wrappedLines.push(currentLine);
-            
-            for (const wLine of wrappedLines) {
-              let x = xStart;
-              if (parsed.align === 'center') {
-                x = (canvas.width - ctx.measureText(wLine).width) / 2;
-              } else if (parsed.align === 'right') {
-                x = canvas.width - rightMargin - ctx.measureText(wLine).width;
-              }
+            if (currentLine) wrappedCount++;
+            totalHeight += lh * wrappedCount;
+          }
+          return totalHeight;
+        };
+
+        // Dynamic font sizing: start at 13 and shrink until content fits
+        let baseFontSize = 13 * scale;
+        const maxHeight = canvas.height - topMargin;
+        let attempts = 0;
+        while (measureLines(baseFontSize) > maxHeight && baseFontSize > 6 * scale && attempts < 20) {
+          baseFontSize -= 0.5 * scale;
+          attempts++;
+        }
+
+        const fontSizes = {
+          h1: baseFontSize * 1.54,
+          h2: baseFontSize * 1.31,
+          h3: baseFontSize * 1.15,
+          small: baseFontSize * 0.77,
+          normal: baseFontSize,
+        };
+        const lineHeights = {
+          h1: fontSizes.h1 * 1.4,
+          h2: fontSizes.h2 * 1.4,
+          h3: fontSizes.h3 * 1.4,
+          small: fontSizes.small * 1.5,
+          normal: fontSizes.normal * 1.46,
+        };
+
+        const setFont = (size: string | undefined, bold: boolean | undefined) => {
+          const fontSize = fontSizes[(size as keyof typeof fontSizes) || 'normal'];
+          const weight = bold ? 'bold' : 'normal';
+          ctx.font = `${weight} ${fontSize}px ${fontFamily}`;
+        };
+        
+        let y = topMargin;
+        const lines = page.text.split('\n');
+        let inTable = false;
+        
+        for (const rawLine of lines) {
+          const parsed = parseLayoutLine(rawLine);
+          
+          // Table markers
+          if (parsed.isTable) {
+            inTable = !inTable;
+            continue;
+          }
+
+          // Table row rendering with proper borders
+          if (inTable && parsed.text.includes('|')) {
+            const cells = parsed.text.split('|').filter(c => c.trim() !== '');
+            if (cells.length > 0 && !cells[0].match(/^[\s-]+$/)) {
+              const cellWidth = maxWidth / cells.length;
+              const rowHeight = lineHeights.normal;
+              setFont(undefined, parsed.bold);
+              ctx.fillStyle = '#000000';
               
-              ctx.fillText(wLine, x, y);
-              y += lineHeight;
+              for (let ci = 0; ci < cells.length; ci++) {
+                const cx = leftMargin + ci * cellWidth;
+                // Draw cell border
+                ctx.strokeStyle = '#333333';
+                ctx.lineWidth = 1.2 * scale;
+                ctx.strokeRect(cx, y - rowHeight * 0.75, cellWidth, rowHeight);
+                // Draw cell text with padding
+                const cellText = cells[ci].trim();
+                const textX = cx + 4 * scale;
+                ctx.fillText(cellText, textX, y);
+              }
+              y += rowHeight;
+            } else {
+              // Separator row (---) — skip, borders handle separation
+              y += 1 * scale;
             }
+            continue;
+          }
+          
+          // Horizontal separator line
+          if (parsed.isLine) {
+            ctx.strokeStyle = '#333333';
+            ctx.lineWidth = 1.5 * scale;
+            ctx.beginPath();
+            ctx.moveTo(leftMargin, y);
+            ctx.lineTo(canvas.width - rightMargin, y);
+            ctx.stroke();
+            y += 8 * scale;
+            continue;
+          }
+          
+          // Extra vertical space
+          if (parsed.isSpace) {
+            y += 12 * scale;
+            continue;
+          }
+          
+          if (!parsed.text && !parsed.rightText) {
+            y += 6 * scale;
+            continue;
+          }
+          
+          const sizeKey = (parsed.size || 'normal') as keyof typeof fontSizes;
+          const lineHeight = lineHeights[sizeKey];
+          const xStart = parsed.indent ? indentMargin : leftMargin;
+          const availWidth = parsed.indent ? maxWidth - 25 * scale : maxWidth;
+          
+          ctx.fillStyle = '#000000';
+          setFont(parsed.size, parsed.bold);
+
+          // Handle mixed left+right on same line
+          if (parsed.rightText && parsed.text) {
+            ctx.fillText(parsed.text, xStart, y);
+            const rightWidth = ctx.measureText(parsed.rightText).width;
+            ctx.fillText(parsed.rightText, canvas.width - rightMargin - rightWidth, y);
+            y += lineHeight;
+            continue;
+          }
+          
+          // Word wrap the text
+          const words = parsed.text.split(' ');
+          let currentLine = '';
+          const wrappedLines: string[] = [];
+          
+          for (const word of words) {
+            const testLine = currentLine + (currentLine ? ' ' : '') + word;
+            if (ctx.measureText(testLine).width > availWidth && currentLine) {
+              wrappedLines.push(currentLine);
+              currentLine = word;
+            } else {
+              currentLine = testLine;
+            }
+          }
+          if (currentLine) wrappedLines.push(currentLine);
+          
+          for (const wLine of wrappedLines) {
+            // Prevent drawing beyond canvas
+            if (y > canvas.height - 10 * scale) break;
+            
+            let x = xStart;
+            if (parsed.align === 'center') {
+              x = (canvas.width - ctx.measureText(wLine).width) / 2;
+            } else if (parsed.align === 'right') {
+              x = canvas.width - rightMargin - ctx.measureText(wLine).width;
+            }
+            
+            ctx.fillText(wLine, x, y);
+            y += lineHeight;
           }
         }
         
