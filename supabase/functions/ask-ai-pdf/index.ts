@@ -13,7 +13,10 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const systemPrompt = `You are an AI Tutor helping students understand their study material. You have been given the text content of a PDF document. Answer questions ONLY based on the provided document context. Be clear, concise, and helpful. If the answer is not in the document, say so.
+    const hasDocContent = pdfContext && !pdfContext.includes('does not have extracted text');
+
+    const systemPrompt = hasDocContent
+      ? `You are an AI Tutor helping students understand their study material. You have been given the text content of a PDF document. Answer questions based on the provided document context. Be clear, concise, and helpful.
 
 Document Content:
 ${pdfContext}
@@ -23,7 +26,23 @@ Instructions:
 - Be concise and to the point
 - Use bullet points for lists
 - If asked to explain, provide simple explanations
-- If the content contains formulas or equations, format them clearly`;
+- If the content contains formulas or equations, format them clearly
+- If the answer is not in the document, say so honestly`
+      : `You are an AI assistant for the MridulPDF app. You can answer general questions about the app and its features. The app allows users to:
+- Capture photos and convert them to PDFs
+- Import existing files as PDFs
+- Use OCR to extract handwritten text
+- Compress PDFs
+- Create PDFs from text
+- Share PDFs publicly (World) or keep them private
+- Ask AI questions about OCR-scanned documents
+
+If the user asks about a specific document, let them know that this PDF doesn't have extracted text available for detailed Q&A, but you can help with general questions.
+
+Instructions:
+- Answer in the same language as the question
+- Be helpful and friendly
+- Be concise`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
