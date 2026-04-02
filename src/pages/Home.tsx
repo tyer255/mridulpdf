@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import SearchBar from '@/components/SearchBar';
 import { Badge } from '@/components/ui/badge';
 import Header from '@/components/Header';
+import LottieLoader from '@/components/LottieLoader';
 import PDFDetailsSheet from '@/components/PDFDetailsSheet';
 import GoogleLoginPrompt from '@/components/GoogleLoginPrompt';
 import { useAuth } from '@/contexts/AuthContext';
