@@ -102,8 +102,7 @@ const PDFDetailsSheet = ({
 
   if (!pdf && !showAIChat) return null;
 
-  // Ask AI is available for ALL PDFs, not just OCR
-  const isOCR = pdf?.isOCR === true;
+  const _isOCR = pdf?.isOCR === true;
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('en-US', {
