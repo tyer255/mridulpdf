@@ -8,6 +8,7 @@ import { useAnonymousUser } from '@/hooks/useAnonymousUser';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import Header from '@/components/Header';
+import LottieLoader from '@/components/LottieLoader';
 import {
   AlertDialog,
   AlertDialogAction,
