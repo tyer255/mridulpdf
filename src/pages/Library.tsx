@@ -8,6 +8,7 @@ import { useAnonymousUser } from '@/hooks/useAnonymousUser';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import Header from '@/components/Header';
+import LottieLoader from '@/components/LottieLoader';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -116,8 +117,9 @@ const Library = () => {
   if (!userId) {
     return (
       <div className="min-h-screen bg-background pb-24 p-6">
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">Loading...</p>
+        <div className="flex flex-col items-center justify-center py-12">
+          <LottieLoader size={140} />
+          <p className="text-sm text-muted-foreground mt-2">Loading...</p>
         </div>
       </div>
     );
@@ -139,19 +141,9 @@ const Library = () => {
         </div>
         
         {loading ? (
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <Card key={i} className="p-4 overflow-hidden">
-                <div className="flex gap-3">
-                  <div className="w-16 h-20 rounded-lg animate-shimmer" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 w-3/4 rounded animate-shimmer" />
-                    <div className="h-3 w-1/2 rounded animate-shimmer" />
-                    <div className="h-5 w-1/3 rounded animate-shimmer" />
-                  </div>
-                </div>
-              </Card>
-            ))}
+          <div className="flex flex-col items-center justify-center py-16">
+            <LottieLoader size={160} />
+            <p className="text-sm text-muted-foreground mt-2">Loading PDFs...</p>
           </div>
         ) : myPDFs.length === 0 ? (
           <div className="text-center py-16">

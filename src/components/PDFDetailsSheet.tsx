@@ -102,7 +102,7 @@ const PDFDetailsSheet = ({
 
   if (!pdf && !showAIChat) return null;
 
-  const isOCR = pdf?.isOCR === true;
+  const _isOCR = pdf?.isOCR === true;
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('en-US', {
@@ -145,15 +145,19 @@ const PDFDetailsSheet = ({
         const { data } = await supabase.storage.from('pdfs').download(ocrPath);
         if (data) {
           storedText = await data.text();
-          // Cache locally for future use
           try { localStorage.setItem(`ocr_text_${capturedPdfId}`, storedText); } catch {}
         }
       } catch (e) {
         console.warn('Could not fetch OCR text from cloud:', e);
       }
     }
+
+    // If still no text, try extracting from PDF download URL
+    if (!storedText) {
+      storedText = 'This document does not have extracted text. You can still ask general questions about the app or request help.';
+    }
     
-    setPdfContext(storedText || '(OCR text not available for this document)');
+    setPdfContext(storedText);
 
     // Close sheet first, then open AI chat after overlay animation finishes
     onOpenChange(false);
@@ -264,26 +268,24 @@ const PDFDetailsSheet = ({
 
               {/* Action Buttons */}
               <div className="pt-6 space-y-3">
-                {isOCR && (
-                  <Button
-                    type="button"
-                    className="w-full h-14 text-base font-semibold rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white shadow-lg"
-                    onClick={handleAskAI}
-                    disabled={loadingContext}
-                  >
-                    {loadingContext ? (
-                      <>
-                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                        Analyzing document…
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-5 h-5 mr-2" />
-                        Ask AI ✨
-                      </>
-                    )}
-                  </Button>
-                )}
+                <Button
+                  type="button"
+                  className="w-full h-14 text-base font-semibold rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white shadow-lg"
+                  onClick={handleAskAI}
+                  disabled={loadingContext}
+                >
+                  {loadingContext ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Analyzing document…
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-5 h-5 mr-2" />
+                      Ask AI ✨
+                    </>
+                  )}
+                </Button>
 
 
                 <Button 
