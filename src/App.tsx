@@ -29,10 +29,12 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 const AppearanceSettings = lazy(() => import("./pages/AppearanceSettings"));
 
-// Simple loading fallback
+import LottieLoader from './components/LottieLoader';
+
+// Loading fallback with Lottie animation
 const PageLoader = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
-    <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    <LottieLoader size={180} />
   </div>
 );
 
