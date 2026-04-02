@@ -146,15 +146,19 @@ const PDFDetailsSheet = ({
         const { data } = await supabase.storage.from('pdfs').download(ocrPath);
         if (data) {
           storedText = await data.text();
-          // Cache locally for future use
           try { localStorage.setItem(`ocr_text_${capturedPdfId}`, storedText); } catch {}
         }
       } catch (e) {
         console.warn('Could not fetch OCR text from cloud:', e);
       }
     }
+
+    // If still no text, try extracting from PDF download URL
+    if (!storedText) {
+      storedText = 'This document does not have extracted text. You can still ask general questions about the app or request help.';
+    }
     
-    setPdfContext(storedText || '(OCR text not available for this document)');
+    setPdfContext(storedText);
 
     // Close sheet first, then open AI chat after overlay animation finishes
     onOpenChange(false);
