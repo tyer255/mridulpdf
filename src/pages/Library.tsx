@@ -117,8 +117,9 @@ const Library = () => {
   if (!userId) {
     return (
       <div className="min-h-screen bg-background pb-24 p-6">
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">Loading...</p>
+        <div className="flex flex-col items-center justify-center py-12">
+          <LottieLoader size={140} />
+          <p className="text-sm text-muted-foreground mt-2">Loading...</p>
         </div>
       </div>
     );
