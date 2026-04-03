@@ -380,7 +380,7 @@ const HandwritingOCR = () => {
 
     if (text.trim() === '[LINE]') return { text: '', ...tags, isLine: true };
     if (text.trim() === '[SPACE]') return { text: '', ...tags, isSpace: true };
-    if (text.trim() === '[TABLE]' || text.trim() === '[/TABLE]') return { text: '', ...tags, isTable: true };
+    if (text.trim() === '[TABLE]' || text.trim() === '[/TABLE]' || text.trim().startsWith('[TABLE ')) return { text: '', ...tags, isTable: true };
 
     // Extract right-aligned portion from same line
     const rightMatch = text.match(/\[RIGHT\](.*?)\[\/RIGHT\]/);
