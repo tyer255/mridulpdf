@@ -12,7 +12,6 @@ import { PDFTag } from '@/types/pdf';
 import { getAppPreferences } from '@/lib/preferences';
 import { jsPDF } from 'jspdf';
 import { supabase } from '@/integrations/supabase/client';
-import { useAnonymousUser } from '@/hooks/useAnonymousUser';
 import { useAuth } from '@/contexts/AuthContext';
 import ExitConfirmDialog from '@/components/ExitConfirmDialog';
 import CopyButton from '@/components/CopyButton';
