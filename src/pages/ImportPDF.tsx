@@ -26,8 +26,8 @@ const ImportPDF = () => {
   const [showFeedback, setShowFeedback] = useState(false);
   const [createdPdfName, setCreatedPdfName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const userId = useAnonymousUser();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, getUserId, getUserDisplayName } = useAuth();
+  const userId = getUserId();
   const navigate = useNavigate();
   const { toast } = useToast();
 

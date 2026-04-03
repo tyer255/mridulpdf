@@ -34,8 +34,8 @@ interface ScanStatus {
 const HandwritingOCR = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const userId = useAnonymousUser();
-  const { getUserDisplayName: getAuthDisplayName } = useAuth();
+  const { getUserId, getUserDisplayName: getAuthDisplayName } = useAuth();
+  const userId = getUserId();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);

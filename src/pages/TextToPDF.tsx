@@ -15,8 +15,8 @@ import { PDFTag } from '@/types/pdf';
 const TextToPDF = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const userId = useAnonymousUser();
-  const { getUserDisplayName } = useAuth();
+  const { getUserId, getUserDisplayName } = useAuth();
+  const userId = getUserId();
 
   const [text, setText] = useState('');
   const [showOptions, setShowOptions] = useState(false);

@@ -24,7 +24,8 @@ const Library = () => {
   const [myPDFs, setMyPDFs] = useState<PDFDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteId, setDeleteId] = useState<{ id: string; visibility: 'private' | 'world' } | null>(null);
-  const userId = useAnonymousUser();
+  const { getUserId } = useAuth();
+  const userId = getUserId();
   const { toast } = useToast();
 
   useEffect(() => {
