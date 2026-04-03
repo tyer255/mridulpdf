@@ -150,20 +150,64 @@ MATHEMATICAL CONTENT (IMPORTANT)
 - For complex equations, maintain proper structure with parentheses and operators.
 
 ═══════════════════════════════════════════════════════════════════════════════
-TABLE HANDLING (VERY IMPORTANT)
+TABLE HANDLING (HIGHEST PRIORITY — GRID-BASED RECONSTRUCTION)
 ═══════════════════════════════════════════════════════════════════════════════
-- Detect EVERY table present in the image.
-- Recreate tables EXACTLY with the SAME number of rows and columns.
-- Do NOT reduce, merge, or skip any rows or columns.
-- Ensure ALL cell content is fully captured (no cut-off or missing text).
-- Maintain proper alignment inside each cell.
-- If multiple tables exist, reconstruct ALL of them correctly.
-- Use markdown table format inside [TABLE] tags:
+
+STEP 1 — STRUCTURE ANALYSIS (do this BEFORE writing any table output):
+- Count the EXACT number of visible rows and columns in the image.
+- Identify ALL merged cells: which cells span multiple columns (colspan) or rows (rowspan).
+- Identify multi-level headers (e.g., a top header spanning sub-headers below it).
+- Build a mental GRID where each cell has coordinates (row, col).
+
+STEP 2 — GRID REPRESENTATION:
+Output the table inside [TABLE] and [/TABLE] tags using an EXTENDED markdown format.
+
+For SIMPLE tables (no merged cells), use standard markdown:
   [TABLE]
   | Col1 | Col2 | Col3 |
   |------|------|------|
   | val  | val  | val  |
   [/TABLE]
+
+For COMPLEX tables with merged cells, use the grid format with cell metadata:
+  [TABLE grid=true]
+  [ROW]
+  [CELL colspan=3][BOLD]Main Heading[/BOLD][/CELL]
+  [/ROW]
+  [ROW]
+  [CELL]Sub A[/CELL]
+  [CELL colspan=2]Sub B[/CELL]
+  [/ROW]
+  [ROW]
+  [CELL rowspan=2]Left[/CELL]
+  [CELL]B1[/CELL]
+  [CELL]C1[/CELL]
+  [/ROW]
+  [ROW]
+  [CELL]B2[/CELL]
+  [CELL]C2[/CELL]
+  [/ROW]
+  [/TABLE]
+
+RULES for grid format:
+- Each [ROW]...[/ROW] is one visual row.
+- Each [CELL]...[/CELL] is one cell. Add colspan=N or rowspan=N attributes when a cell spans multiple columns/rows.
+- When a cell is covered by a rowspan from a row above, do NOT add an extra [CELL] for it — the spanning cell already covers that position.
+- Maintain the EXACT number of logical columns across all rows.
+- Use [BOLD] inside [CELL] for header cells.
+
+STEP 3 — VALIDATION:
+- Verify every row has the correct number of logical columns (accounting for spans).
+- Verify no cell content is missing or truncated.
+- Verify merged cells match the original image exactly.
+
+CRITICAL TABLE RULES:
+- Do NOT simplify tables into plain text.
+- Do NOT skip any column, row, or merged header.
+- Do NOT break merged cells into separate cells.
+- Preserve the exact hierarchy of headings and subheadings.
+- All cell text must be fully visible — no cut-off content.
+- Fit table proportionally — maintain balanced column widths.
 
 ═══════════════════════════════════════════════════════════════════════════════
 LAYOUT TAGS (use to replicate EXACT positioning)
