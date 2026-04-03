@@ -35,8 +35,8 @@ const CapturePDF = () => {
   const [createdPdfName, setCreatedPdfName] = useState('');
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
-  const userId = useAnonymousUser();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, getUserId, getUserDisplayName } = useAuth();
+  const userId = getUserId();
   const navigate = useNavigate();
   const { toast } = useToast();
 
