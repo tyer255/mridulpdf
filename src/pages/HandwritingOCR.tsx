@@ -431,6 +431,56 @@ const HandwritingOCR = () => {
     return { text: text.trim(), ...tags };
   };
 
+  // Parse grid-format table into structured data
+  interface GridCell {
+    text: string;
+    colspan: number;
+    rowspan: number;
+    bold: boolean;
+  }
+  type GridRow = GridCell[];
+
+  const parseGridTable = (tableLines: string[]): GridRow[] => {
+    const rows: GridRow[] = [];
+    let currentRow: GridCell[] | null = null;
+
+    for (const line of tableLines) {
+      const trimmed = line.trim();
+      if (trimmed === '[ROW]') {
+        currentRow = [];
+        continue;
+      }
+      if (trimmed === '[/ROW]') {
+        if (currentRow) rows.push(currentRow);
+        currentRow = null;
+        continue;
+      }
+      if (currentRow !== null) {
+        // Parse [CELL colspan=N rowspan=N]...[/CELL]
+        const cellRegex = /\[CELL([^\]]*)\](.*?)\[\/CELL\]/g;
+        let match;
+        while ((match = cellRegex.exec(trimmed)) !== null) {
+          const attrs = match[1];
+          let cellText = match[2];
+          const colspanMatch = attrs.match(/colspan=(\d+)/);
+          const rowspanMatch = attrs.match(/rowspan=(\d+)/);
+          const bold = cellText.includes('[BOLD]');
+          cellText = cellText.replace(/\[\/?[A-Z][A-Z0-9_]*(?:\s[^\]]*)?\]/g, '').trim();
+          currentRow.push({
+            text: cellText,
+            colspan: colspanMatch ? parseInt(colspanMatch[1]) : 1,
+            rowspan: rowspanMatch ? parseInt(rowspanMatch[1]) : 1,
+            bold,
+          });
+        }
+      }
+    }
+    return rows;
+  };
+
+  const isGridTable = (tableLines: string[]): boolean => {
+    return tableLines.some(l => l.trim().startsWith('[ROW]'));
+
   // Create PDF from extracted text - layout-aware rendering with dynamic sizing
   const createPDF = async () => {
     if (extractedPages.length === 0) return;
