@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Upload, Loader2, FileText, X, ArrowLeft } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import { useAnonymousUser, getUserDisplayName } from '@/hooks/useAnonymousUser';
+import { useToast } from '@/hooks/use-toast';
 import { useToast } from '@/hooks/use-toast';
 import { mockStorage } from '@/lib/mockStorage';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
