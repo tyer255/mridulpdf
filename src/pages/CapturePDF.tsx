@@ -4,7 +4,6 @@ import { Label } from '@/components/ui/label';
 import { Camera, X, Save, Loader2, ArrowLeft, Image as ImageIcon } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { useToast } from '@/hooks/use-toast';
 import { jsPDF } from 'jspdf';
 import { mockStorage } from '@/lib/mockStorage';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
