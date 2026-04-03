@@ -644,43 +644,125 @@ const HandwritingOCR = () => {
         };
         
         let y = topMargin;
-        const lines = page.text.split('\n');
-        let inTable = false;
-        
-        for (const rawLine of lines) {
-          const parsed = parseLayoutLine(rawLine);
-          
-          // Table markers
-          if (parsed.isTable) {
-            inTable = !inTable;
-            continue;
+        const renderLines = page.text.split('\n');
+        let inTableRender = false;
+        let renderTableBuffer: string[] = [];
+
+        // Render a grid-format table with colspan/rowspan
+        const renderGridTable = (tLines: string[], startY: number): number => {
+          const gridRows = parseGridTable(tLines);
+          if (gridRows.length === 0) return startY;
+
+          // Determine total logical columns
+          let totalCols = 0;
+          for (const row of gridRows) {
+            let cols = 0;
+            for (const cell of row) cols += cell.colspan;
+            totalCols = Math.max(totalCols, cols);
+          }
+          if (totalCols === 0) totalCols = 1;
+
+          const colWidth = maxWidth / totalCols;
+          const rowH = lineHeights.normal;
+          let curY = startY;
+
+          // Build a grid occupancy map for rowspan tracking
+          const occupied: boolean[][] = [];
+          for (let r = 0; r < gridRows.length; r++) {
+            occupied[r] = new Array(totalCols).fill(false);
           }
 
-          // Table row rendering with proper borders
-          if (inTable && parsed.text.includes('|')) {
+          for (let ri = 0; ri < gridRows.length; ri++) {
+            const row = gridRows[ri];
+            let colIdx = 0;
+
+            for (const cell of row) {
+              // Skip occupied cells (from rowspan above)
+              while (colIdx < totalCols && occupied[ri][colIdx]) colIdx++;
+              if (colIdx >= totalCols) break;
+
+              const cellW = colWidth * cell.colspan;
+              const cellH = rowH * cell.rowspan;
+              const cellX = leftMargin + colIdx * colWidth;
+              const cellY = curY;
+
+              // Mark occupied cells for rowspan
+              for (let rs = 0; rs < cell.rowspan; rs++) {
+                for (let cs = 0; cs < cell.colspan; cs++) {
+                  if (ri + rs < gridRows.length && colIdx + cs < totalCols) {
+                    occupied[ri + rs][colIdx + cs] = true;
+                  }
+                }
+              }
+
+              // Draw cell border
+              ctx.strokeStyle = '#333333';
+              ctx.lineWidth = 1.2 * scale;
+              ctx.strokeRect(cellX, cellY, cellW, cellH);
+
+              // Draw cell text
+              ctx.fillStyle = '#000000';
+              const weight = cell.bold ? 'bold' : 'normal';
+              ctx.font = `${weight} ${fontSizes.normal}px ${fontFamily}`;
+              const textX = cellX + 4 * scale;
+              const textY = cellY + cellH * 0.6;
+              ctx.fillText(cell.text, textX, textY);
+
+              colIdx += cell.colspan;
+            }
+            curY += rowH;
+          }
+          return curY;
+        };
+
+        // Render a markdown table
+        const renderMarkdownTable = (tLines: string[], startY: number): number => {
+          let curY = startY;
+          for (const tl of tLines) {
+            const parsed = parseLayoutLine(tl);
+            if (!parsed.text.includes('|')) continue;
             const cells = parsed.text.split('|').filter(c => c.trim() !== '');
             if (cells.length > 0 && !cells[0].match(/^[\s-]+$/)) {
               const cellWidth = maxWidth / cells.length;
               const rowHeight = lineHeights.normal;
               setFont(undefined, parsed.bold);
               ctx.fillStyle = '#000000';
-              
               for (let ci = 0; ci < cells.length; ci++) {
                 const cx = leftMargin + ci * cellWidth;
-                // Draw cell border
                 ctx.strokeStyle = '#333333';
                 ctx.lineWidth = 1.2 * scale;
-                ctx.strokeRect(cx, y - rowHeight * 0.75, cellWidth, rowHeight);
-                // Draw cell text with padding
+                ctx.strokeRect(cx, curY, cellWidth, rowHeight);
                 const cellText = cells[ci].trim();
-                const textX = cx + 4 * scale;
-                ctx.fillText(cellText, textX, y);
+                ctx.fillText(cellText, cx + 4 * scale, curY + rowHeight * 0.65);
               }
-              y += rowHeight;
+              curY += rowHeight;
             } else {
-              // Separator row (---) — skip, borders handle separation
-              y += 1 * scale;
+              curY += 1 * scale;
             }
+          }
+          return curY;
+        };
+        
+        for (const rawLine of renderLines) {
+          const parsed = parseLayoutLine(rawLine);
+          
+          // Table markers
+          if (parsed.isTable) {
+            if (inTableRender) {
+              // End of table — render collected buffer
+              if (isGridTable(renderTableBuffer)) {
+                y = renderGridTable(renderTableBuffer, y);
+              } else {
+                y = renderMarkdownTable(renderTableBuffer, y);
+              }
+              renderTableBuffer = [];
+            }
+            inTableRender = !inTableRender;
+            continue;
+          }
+
+          if (inTableRender) {
+            renderTableBuffer.push(rawLine);
             continue;
           }
           
