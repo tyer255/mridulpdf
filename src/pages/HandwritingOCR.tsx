@@ -480,7 +480,7 @@ const HandwritingOCR = () => {
 
   const isGridTable = (tableLines: string[]): boolean => {
     return tableLines.some(l => l.trim().startsWith('[ROW]'));
-
+  };
   // Create PDF from extracted text - layout-aware rendering with dynamic sizing
   const createPDF = async () => {
     if (extractedPages.length === 0) return;
