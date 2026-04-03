@@ -4,7 +4,7 @@ import { PDFDocument } from '@/types/pdf';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileText, Clock, Eye, Trash2, FolderOpen, Globe, Lock } from 'lucide-react';
-import { useAnonymousUser } from '@/hooks/useAnonymousUser';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import Header from '@/components/Header';
