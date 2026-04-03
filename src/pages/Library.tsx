@@ -4,7 +4,7 @@ import { PDFDocument } from '@/types/pdf';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileText, Clock, Eye, Trash2, FolderOpen, Globe, Lock } from 'lucide-react';
-import { useAnonymousUser } from '@/hooks/useAnonymousUser';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import Header from '@/components/Header';
@@ -24,7 +24,8 @@ const Library = () => {
   const [myPDFs, setMyPDFs] = useState<PDFDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteId, setDeleteId] = useState<{ id: string; visibility: 'private' | 'world' } | null>(null);
-  const userId = useAnonymousUser();
+  const { getUserId } = useAuth();
+  const userId = getUserId();
   const { toast } = useToast();
 
   useEffect(() => {

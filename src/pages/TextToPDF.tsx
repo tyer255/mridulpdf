@@ -8,15 +8,15 @@ import { Textarea } from '@/components/ui/textarea';
 import TagSelector from '@/components/TagSelector';
 import { mockStorage } from '@/lib/mockStorage';
 import { useAuth } from '@/contexts/AuthContext';
-import { useAnonymousUser } from '@/hooks/useAnonymousUser';
+
 import { useToast } from '@/hooks/use-toast';
 import { PDFTag } from '@/types/pdf';
 
 const TextToPDF = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const userId = useAnonymousUser();
-  const { getUserDisplayName } = useAuth();
+  const { getUserId, getUserDisplayName } = useAuth();
+  const userId = getUserId();
 
   const [text, setText] = useState('');
   const [showOptions, setShowOptions] = useState(false);

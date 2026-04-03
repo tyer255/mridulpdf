@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Label } from '@/components/ui/label';
 import { Camera, X, Save, Loader2, ArrowLeft, Image as ImageIcon } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import { useAnonymousUser, getUserDisplayName } from '@/hooks/useAnonymousUser';
 import { useToast } from '@/hooks/use-toast';
 import { jsPDF } from 'jspdf';
 import { mockStorage } from '@/lib/mockStorage';
@@ -35,8 +34,8 @@ const CapturePDF = () => {
   const [createdPdfName, setCreatedPdfName] = useState('');
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
-  const userId = useAnonymousUser();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, getUserId, getUserDisplayName } = useAuth();
+  const userId = getUserId();
   const navigate = useNavigate();
   const { toast } = useToast();
 
