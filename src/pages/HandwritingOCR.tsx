@@ -541,18 +541,40 @@ const HandwritingOCR = () => {
           let totalHeight = topMargin;
           const lines = page.text.split('\n');
           let inTable = false;
+          let tableBuffer: string[] = [];
+
+          const measureTable = (tLines: string[]) => {
+            let h = 0;
+            if (isGridTable(tLines)) {
+              const gridRows = parseGridTable(tLines);
+              h += gridRows.length * lineHeights.normal;
+            } else {
+              for (const tl of tLines) {
+                const cells = tl.split('|').filter(c => c.trim() !== '');
+                if (cells.length > 0 && !cells[0].match(/^[\s-]+$/)) {
+                  h += lineHeights.normal;
+                } else {
+                  h += 2 * scale;
+                }
+              }
+            }
+            return h;
+          };
 
           for (const rawLine of lines) {
             const parsed = parseLayoutLine(rawLine);
-            if (parsed.isTable) { inTable = !inTable; continue; }
-
-            if (inTable && parsed.text.includes('|')) {
-              const cells = parsed.text.split('|').filter(c => c.trim() !== '');
-              if (cells.length > 0 && !cells[0].match(/^[\s-]+$/)) {
-                totalHeight += lineHeights.normal;
-              } else {
-                totalHeight += 2 * scale;
+            if (parsed.isTable) {
+              if (inTable) {
+                // End of table — measure collected buffer
+                totalHeight += measureTable(tableBuffer);
+                tableBuffer = [];
               }
+              inTable = !inTable;
+              continue;
+            }
+
+            if (inTable) {
+              tableBuffer.push(rawLine);
               continue;
             }
 
