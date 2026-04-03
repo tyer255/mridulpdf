@@ -414,7 +414,7 @@ const HandwritingOCR = () => {
     if (text.includes('[FOOTER]')) { tags.isFooter = true; tags.size = 'small'; text = text.replace(/\[FOOTER\]/g, '').replace(/\[\/FOOTER\]/g, ''); }
 
     // AGGRESSIVE final cleanup: remove ANY remaining square-bracket tags
-    text = text.replace(/\[\/?[A-Z][A-Z0-9_]*\]/g, '');
+    text = text.replace(/\[\/?[A-Z][A-Z0-9_]*(?:\s[^\]]*)?\]/g, '');
 
     // Fix merged words
     text = text
