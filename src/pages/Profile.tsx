@@ -276,7 +276,7 @@ function ProfileMainView({
         <div className="relative inline-block mb-4" onClick={handleAvatarClick}>
           {!isLight && <div className={`absolute inset-0 rounded-full blur-xl opacity-40 scale-150 ${currentTheme.bg}`} />}
           <div className="relative">
-            <div className={`w-24 h-24 rounded-full flex items-center justify-center text-2xl font-bold border-4 overflow-hidden ${isLight ? 'border-slate-200 bg-slate-100' : 'border-white/20 bg-slate-800'} ${!isAuthenticated ? 'cursor-pointer group' : ''}`}>
+            <div className={`w-24 h-24 rounded-full flex items-center justify-center text-2xl font-bold border-4 overflow-hidden cursor-pointer group ${isLight ? 'border-slate-200 bg-slate-100' : 'border-white/20 bg-slate-800'}`}>
               {avatar ? (
                 <img src={avatar} alt={displayName} className="w-full h-full object-cover" />
               ) : (
@@ -284,12 +284,10 @@ function ProfileMainView({
                   {displayName?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || 'U'}
                 </span>
               )}
-              {/* Upload overlay for guests */}
-              {!isAuthenticated && (
-                <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  {uploadingAvatar ? <Loader2 className="w-6 h-6 text-white animate-spin" /> : <Camera className="w-6 h-6 text-white" />}
-                </div>
-              )}
+              {/* Upload overlay for all users */}
+              <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                {uploadingAvatar ? <Loader2 className="w-6 h-6 text-white animate-spin" /> : <Camera className="w-6 h-6 text-white" />}
+              </div>
             </div>
           </div>
           {/* Crown emoji */}
