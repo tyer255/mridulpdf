@@ -545,12 +545,67 @@ const HandwritingOCR = () => {
 
           const measureTable = (tLines: string[]) => {
             let h = 0;
+            const cellPad = 4 * scale;
             if (isGridTable(tLines)) {
               const gridRows = parseGridTable(tLines);
-              h += gridRows.length * lineHeights.normal;
+              // Determine total columns
+              let tCols = 0;
+              for (const row of gridRows) {
+                let cols = 0;
+                for (const cell of row) cols += cell.colspan;
+                tCols = Math.max(tCols, cols);
+              }
+              if (tCols === 0) tCols = 1;
+              // Estimate proportional col widths
+              const colMinW = new Array(tCols).fill(0);
+              for (const row of gridRows) {
+                let ci = 0;
+                for (const cell of row) {
+                  if (cell.colspan === 1) {
+                    const w = cell.bold ? 'bold' : 'normal';
+                    ctx.font = `${w} ${fontSizes.normal}px ${fontFamily}`;
+                    colMinW[ci] = Math.max(colMinW[ci], ctx.measureText(cell.text).width + cellPad * 2);
+                  }
+                  ci += cell.colspan;
+                }
+              }
+              const totalIdeal = colMinW.reduce((a, b) => a + b, 0) || 1;
+              const colW = colMinW.map(w => Math.max((w / totalIdeal) * maxWidth, maxWidth / (tCols * 2)));
+              const sumW = colW.reduce((a, b) => a + b, 0);
+              for (let c = 0; c < tCols; c++) colW[c] = (colW[c] / sumW) * maxWidth;
+
+              for (const row of gridRows) {
+                let maxRowH = lineHeights.normal;
+                let ci = 0;
+                for (const cell of row) {
+                  let cWidth = 0;
+                  for (let c = ci; c < ci + cell.colspan && c < tCols; c++) cWidth += colW[c];
+                  const availW = cWidth - cellPad * 2;
+                  const w = cell.bold ? 'bold' : 'normal';
+                  ctx.font = `${w} ${fontSizes.normal}px ${fontFamily}`;
+                  // Count wrapped lines
+                  const words = cell.text.split(' ');
+                  let cur = '';
+                  let lines = 0;
+                  for (const word of words) {
+                    const test = cur + (cur ? ' ' : '') + word;
+                    if (ctx.measureText(test).width > Math.max(availW, 20) && cur) { lines++; cur = word; }
+                    else cur = test;
+                  }
+                  if (cur) lines++;
+                  if (lines === 0) lines = 1;
+                  if (cell.rowspan === 1) {
+                    maxRowH = Math.max(maxRowH, lines * lineHeights.normal + cellPad);
+                  }
+                  ci += cell.colspan;
+                }
+                h += maxRowH;
+              }
             } else {
               for (const tl of tLines) {
-                const cells = tl.split('|').filter(c => c.trim() !== '');
+                const parsed2 = parseLayoutLine(tl);
+                if (!parsed2.text.includes('|')) continue;
+                const cells = parsed2.text.split('|').filter(c => c.trim() !== '');
                 if (cells.length > 0 && !cells[0].match(/^[\s-]+$/)) {
                   h += lineHeights.normal;
                 } else {
