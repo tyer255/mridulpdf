@@ -827,30 +827,81 @@ const HandwritingOCR = () => {
           return cy;
         };
 
-        // Render a markdown table
+        // Render a markdown table — proportional column widths + text wrapping
         const renderMarkdownTable = (tLines: string[], startY: number): number => {
-          let curY = startY;
+          const cellPadding = 4 * scale;
+          // Parse all data rows first to measure column widths
+          const dataRows: { cells: string[]; bold: boolean }[] = [];
+          let numCols = 0;
           for (const tl of tLines) {
             const parsed = parseLayoutLine(tl);
             if (!parsed.text.includes('|')) continue;
             const cells = parsed.text.split('|').filter(c => c.trim() !== '');
             if (cells.length > 0 && !cells[0].match(/^[\s-]+$/)) {
-              const cellWidth = maxWidth / cells.length;
-              const rowHeight = lineHeights.normal;
-              setFont(undefined, parsed.bold);
-              ctx.fillStyle = '#000000';
-              for (let ci = 0; ci < cells.length; ci++) {
-                const cx = leftMargin + ci * cellWidth;
-                ctx.strokeStyle = '#333333';
-                ctx.lineWidth = 1.2 * scale;
-                ctx.strokeRect(cx, curY, cellWidth, rowHeight);
-                const cellText = cells[ci].trim();
-                ctx.fillText(cellText, cx + 4 * scale, curY + rowHeight * 0.65);
-              }
-              curY += rowHeight;
-            } else {
-              curY += 1 * scale;
+              dataRows.push({ cells: cells.map(c => c.trim()), bold: !!parsed.bold });
+              numCols = Math.max(numCols, cells.length);
             }
+          }
+          if (dataRows.length === 0 || numCols === 0) return startY;
+
+          // Measure ideal widths
+          const colMinW = new Array(numCols).fill(0);
+          for (const row of dataRows) {
+            const w = row.bold ? 'bold' : 'normal';
+            ctx.font = `${w} ${fontSizes.normal}px ${fontFamily}`;
+            for (let ci = 0; ci < row.cells.length; ci++) {
+              const tw = ctx.measureText(row.cells[ci]).width + cellPadding * 2;
+              colMinW[ci] = Math.max(colMinW[ci], tw);
+            }
+          }
+          const totalIdeal = colMinW.reduce((a, b) => a + b, 0);
+          const colWidths: number[] = [];
+          for (let c = 0; c < numCols; c++) {
+            colWidths.push(totalIdeal > 0 ? Math.max((colMinW[c] / totalIdeal) * maxWidth, maxWidth / (numCols * 2)) : maxWidth / numCols);
+          }
+          const sumW = colWidths.reduce((a, b) => a + b, 0);
+          for (let c = 0; c < numCols; c++) colWidths[c] = (colWidths[c] / sumW) * maxWidth;
+
+          let curY = startY;
+          for (const row of dataRows) {
+            const weight = row.bold ? 'bold' : 'normal';
+            ctx.font = `${weight} ${fontSizes.normal}px ${fontFamily}`;
+            ctx.fillStyle = '#000000';
+
+            // Wrap text per cell to compute row height
+            const wrappedCells: string[][] = [];
+            let maxLines = 1;
+            for (let ci = 0; ci < numCols; ci++) {
+              const text = ci < row.cells.length ? row.cells[ci] : '';
+              const availW = colWidths[ci] - cellPadding * 2;
+              const words = text.split(' ');
+              const lines: string[] = [];
+              let cur = '';
+              for (const word of words) {
+                const test = cur + (cur ? ' ' : '') + word;
+                if (ctx.measureText(test).width > availW && cur) { lines.push(cur); cur = word; }
+                else cur = test;
+              }
+              if (cur) lines.push(cur);
+              if (lines.length === 0) lines.push('');
+              wrappedCells.push(lines);
+              maxLines = Math.max(maxLines, lines.length);
+            }
+            const rowH = maxLines * lineHeights.normal + cellPadding;
+
+            let cx = leftMargin;
+            for (let ci = 0; ci < numCols; ci++) {
+              ctx.strokeStyle = '#333333';
+              ctx.lineWidth = 1.2 * scale;
+              ctx.strokeRect(cx, curY, colWidths[ci], rowH);
+              const lines = wrappedCells[ci] || [''];
+              const textStartY = curY + lineHeights.normal * 0.75 + cellPadding / 2;
+              for (let li = 0; li < lines.length; li++) {
+                ctx.fillText(lines[li], cx + cellPadding, textStartY + li * lineHeights.normal);
+              }
+              cx += colWidths[ci];
+            }
+            curY += rowH;
           }
           return curY;
         };
