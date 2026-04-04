@@ -1230,8 +1230,9 @@ const HandwritingOCR = () => {
                 </span>
               </div>
               
-              {/* Progress percentage - responsive text */}
-              <div className="flex items-center justify-center">
+              {/* Lottie animation + percentage side by side */}
+              <div className="flex items-center justify-center gap-4">
+                <LottieLoader size={80} className="shrink-0" />
                 <span 
                   className="text-5xl sm:text-6xl md:text-7xl font-bold text-primary transition-all duration-150"
                   style={{
