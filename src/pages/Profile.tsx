@@ -128,7 +128,7 @@ const Profile = () => {
   };
 
   const handleAvatarClick = () => {
-    if (!isAuthenticated) fileInputRef.current?.click();
+    fileInputRef.current?.click();
   };
 
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -144,6 +144,12 @@ const Profile = () => {
       if (uploadError) throw uploadError;
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
       const avatarUrl = `${publicUrl}?t=${Date.now()}`;
+
+      if (isAuthenticated) {
+        // For authenticated users, update user metadata so it syncs across devices
+        await supabase.auth.updateUser({ data: { avatar_url: avatarUrl } });
+      }
+      // Also set locally for immediate display
       setGuestAvatar(avatarUrl);
       toast({ title: "Success!", description: "Profile photo updated successfully" });
     } catch (error) {
