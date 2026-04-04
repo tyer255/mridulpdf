@@ -647,7 +647,7 @@ const HandwritingOCR = () => {
         let inTableRender = false;
         let renderTableBuffer: string[] = [];
 
-        // Render a grid-format table with colspan/rowspan
+        // Render a grid-format table with colspan/rowspan — proportional column widths + text wrapping
         const renderGridTable = (tLines: string[], startY: number): number => {
           const gridRows = parseGridTable(tLines);
           if (gridRows.length === 0) return startY;
@@ -661,34 +661,141 @@ const HandwritingOCR = () => {
           }
           if (totalCols === 0) totalCols = 1;
 
-          const colWidth = maxWidth / totalCols;
-          const rowH = lineHeights.normal;
-          let curY = startY;
+          const cellPadding = 4 * scale;
 
-          // Build a grid occupancy map for rowspan tracking
-          const occupied: boolean[][] = [];
-          for (let r = 0; r < gridRows.length; r++) {
-            occupied[r] = new Array(totalCols).fill(false);
+          // --- Step 1: Measure ideal width per column based on cell content ---
+          const colMinWidths = new Array(totalCols).fill(0);
+          for (const row of gridRows) {
+            let ci = 0;
+            for (const cell of row) {
+              if (cell.colspan === 1) {
+                const w = cell.bold ? 'bold' : 'normal';
+                ctx.font = `${w} ${fontSizes.normal}px ${fontFamily}`;
+                const tw = ctx.measureText(cell.text).width + cellPadding * 2;
+                colMinWidths[ci] = Math.max(colMinWidths[ci], tw);
+              }
+              ci += cell.colspan;
+            }
           }
 
-          for (let ri = 0; ri < gridRows.length; ri++) {
+          // Distribute widths proportionally across maxWidth
+          const totalIdeal = colMinWidths.reduce((a, b) => a + b, 0);
+          const colWidths: number[] = [];
+          if (totalIdeal > 0) {
+            for (let c = 0; c < totalCols; c++) {
+              colWidths.push(Math.max((colMinWidths[c] / totalIdeal) * maxWidth, maxWidth / (totalCols * 2)));
+            }
+          } else {
+            for (let c = 0; c < totalCols; c++) colWidths.push(maxWidth / totalCols);
+          }
+          // Normalize to exactly maxWidth
+          const sumW = colWidths.reduce((a, b) => a + b, 0);
+          for (let c = 0; c < totalCols; c++) colWidths[c] = (colWidths[c] / sumW) * maxWidth;
+
+          // Helper: get X position for column index
+          const colX = (ci: number) => {
+            let x = leftMargin;
+            for (let c = 0; c < ci; c++) x += colWidths[c];
+            return x;
+          };
+          const spanWidth = (ci: number, span: number) => {
+            let w = 0;
+            for (let c = ci; c < ci + span && c < totalCols; c++) w += colWidths[c];
+            return w;
+          };
+
+          // --- Step 2: Wrap text and compute row heights ---
+          const wrapText = (text: string, maxW: number, font: string): string[] => {
+            ctx.font = font;
+            const words = text.split(' ');
+            const lines: string[] = [];
+            let cur = '';
+            for (const word of words) {
+              const test = cur + (cur ? ' ' : '') + word;
+              if (ctx.measureText(test).width > maxW && cur) {
+                lines.push(cur);
+                cur = word;
+              } else {
+                cur = test;
+              }
+            }
+            if (cur) lines.push(cur);
+            if (lines.length === 0) lines.push('');
+            return lines;
+          };
+
+          // Build occupancy map
+          const occupied: boolean[][] = [];
+          const totalRows = gridRows.length;
+          for (let r = 0; r < totalRows + 20; r++) occupied[r] = new Array(totalCols).fill(false);
+
+          // Pre-compute wrapped lines + row heights
+          const cellWrapped: string[][][] = []; // [row][cellIdx] = string[]
+          const rowHeights: number[] = new Array(totalRows).fill(lineHeights.normal);
+
+          for (let ri = 0; ri < totalRows; ri++) {
+            cellWrapped[ri] = [];
+            const row = gridRows[ri];
+            let colIdx = 0;
+            for (let ci2 = 0; ci2 < row.length; ci2++) {
+              const cell = row[ci2];
+              while (colIdx < totalCols && occupied[ri][colIdx]) colIdx++;
+              const cW = spanWidth(colIdx, cell.colspan) - cellPadding * 2;
+              const w = cell.bold ? 'bold' : 'normal';
+              const font = `${w} ${fontSizes.normal}px ${fontFamily}`;
+              const wrapped = wrapText(cell.text, Math.max(cW, 20), font);
+              cellWrapped[ri].push(wrapped);
+
+              const neededH = wrapped.length * lineHeights.normal + cellPadding;
+              // For rowspan=1, update row height; for multi-row, distribute later
+              if (cell.rowspan === 1) {
+                rowHeights[ri] = Math.max(rowHeights[ri], neededH);
+              }
+
+              // Mark occupied
+              for (let rs = 0; rs < cell.rowspan; rs++) {
+                for (let cs = 0; cs < cell.colspan; cs++) {
+                  if (ri + rs < totalRows + 20 && colIdx + cs < totalCols) {
+                    occupied[ri + rs][colIdx + cs] = true;
+                  }
+                }
+              }
+              colIdx += cell.colspan;
+            }
+          }
+
+          // Reset occupancy for render pass
+          for (let r = 0; r < totalRows + 20; r++) occupied[r] = new Array(totalCols).fill(false);
+
+          // --- Step 3: Render ---
+          // Compute Y positions for each row
+          const rowY: number[] = [];
+          let cy = startY;
+          for (let r = 0; r < totalRows; r++) {
+            rowY.push(cy);
+            cy += rowHeights[r];
+          }
+
+          for (let ri = 0; ri < totalRows; ri++) {
             const row = gridRows[ri];
             let colIdx = 0;
 
-            for (const cell of row) {
-              // Skip occupied cells (from rowspan above)
+            for (let ci2 = 0; ci2 < row.length; ci2++) {
+              const cell = row[ci2];
               while (colIdx < totalCols && occupied[ri][colIdx]) colIdx++;
               if (colIdx >= totalCols) break;
 
-              const cellW = colWidth * cell.colspan;
-              const cellH = rowH * cell.rowspan;
-              const cellX = leftMargin + colIdx * colWidth;
-              const cellY = curY;
+              const cellW = spanWidth(colIdx, cell.colspan);
+              let cellH = 0;
+              for (let rs = 0; rs < cell.rowspan && ri + rs < totalRows; rs++) cellH += rowHeights[ri + rs];
+              if (cellH === 0) cellH = rowHeights[ri];
+              const cellX2 = colX(colIdx);
+              const cellY2 = rowY[ri];
 
-              // Mark occupied cells for rowspan
+              // Mark occupied
               for (let rs = 0; rs < cell.rowspan; rs++) {
                 for (let cs = 0; cs < cell.colspan; cs++) {
-                  if (ri + rs < gridRows.length && colIdx + cs < totalCols) {
+                  if (ri + rs < totalRows + 20 && colIdx + cs < totalCols) {
                     occupied[ri + rs][colIdx + cs] = true;
                   }
                 }
@@ -697,21 +804,27 @@ const HandwritingOCR = () => {
               // Draw cell border
               ctx.strokeStyle = '#333333';
               ctx.lineWidth = 1.2 * scale;
-              ctx.strokeRect(cellX, cellY, cellW, cellH);
+              ctx.strokeRect(cellX2, cellY2, cellW, cellH);
 
-              // Draw cell text
+              // Draw wrapped text
               ctx.fillStyle = '#000000';
               const weight = cell.bold ? 'bold' : 'normal';
               ctx.font = `${weight} ${fontSizes.normal}px ${fontFamily}`;
-              const textX = cellX + 4 * scale;
-              const textY = cellY + cellH * 0.6;
-              ctx.fillText(cell.text, textX, textY);
+              const wrapped = cellWrapped[ri][ci2] || [cell.text];
+              const textBlockH = wrapped.length * lineHeights.normal;
+              const textStartY = cellY2 + (cellH - textBlockH) / 2 + lineHeights.normal * 0.75;
+              for (let li = 0; li < wrapped.length; li++) {
+                const tx = cellX2 + cellPadding;
+                const ty = textStartY + li * lineHeights.normal;
+                if (ty < cellY2 + cellH) {
+                  ctx.fillText(wrapped[li], tx, ty);
+                }
+              }
 
               colIdx += cell.colspan;
             }
-            curY += rowH;
           }
-          return curY;
+          return cy;
         };
 
         // Render a markdown table
