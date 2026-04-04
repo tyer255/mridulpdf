@@ -256,9 +256,17 @@ const HandwritingOCR = () => {
       
       onProgress(15, 'Sharpening edges...');
 
-      // Phase 2: OCR Processing (20-75%)
+      // Phase 2: OCR Processing (20-90%) with gradual simulation
       onProgress(20, 'Extracting text...');
       
+      // Simulate gradual progress during API call
+      let simProgress = 20;
+      const progressInterval = setInterval(() => {
+        simProgress += Math.random() * 8 + 2;
+        if (simProgress > 85) simProgress = 85;
+        onProgress(Math.round(simProgress), simProgress < 50 ? 'Analyzing layout...' : simProgress < 70 ? 'Recognizing characters...' : 'Processing tables...');
+      }, 800);
+
       const { data, error } = await supabase.functions.invoke('ocr-handwriting', {
         body: { image: processedImage },
         headers: {
@@ -266,10 +274,11 @@ const HandwritingOCR = () => {
         }
       });
 
+      clearInterval(progressInterval);
       if (error) throw error;
 
-      // Phase 3: Post-processing (75-100%)
-      onProgress(80, 'Formatting output...');
+      // Phase 3: Post-processing (90-100%)
+      onProgress(92, 'Formatting output...');
       onProgress(100, 'Complete');
 
       return { success: true, text: data.text || '' };

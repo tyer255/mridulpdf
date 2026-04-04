@@ -148,6 +148,8 @@ const Profile = () => {
       if (isAuthenticated) {
         // For authenticated users, update user metadata so it syncs across devices
         await supabase.auth.updateUser({ data: { avatar_url: avatarUrl } });
+        // Refresh the session so AuthContext picks up the new avatar_url
+        await supabase.auth.refreshSession();
       }
       // Also set locally for immediate display
       setGuestAvatar(avatarUrl);
