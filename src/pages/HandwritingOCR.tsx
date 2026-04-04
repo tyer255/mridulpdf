@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import ExitConfirmDialog from '@/components/ExitConfirmDialog';
 import CopyButton from '@/components/CopyButton';
+import LottieLoader from '@/components/LottieLoader';
 
 type OCRStep = 'capture' | 'scanning' | 'results';
 
