@@ -606,6 +606,7 @@ const HandwritingOCR = () => {
           let totalHeight = topMargin;
           const lines = processedText.split('\n');
           let inTable = false;
+          let inDiag = false;
           let tableBuffer: string[] = [];
 
           const measureTable = (tLines: string[]) => {
@@ -697,6 +698,13 @@ const HandwritingOCR = () => {
               tableBuffer.push(rawLine);
               continue;
             }
+
+            if (parsed.isDiagram) {
+              inDiag = !inDiag;
+              if (!inDiag) totalHeight += canvas.height * 0.35; // reserve space for embedded image
+              continue;
+            }
+            if (inDiag) continue;
 
             if (parsed.isLine) { totalHeight += 8 * scale; continue; }
             if (parsed.isSpace) { totalHeight += 12 * scale; continue; }
