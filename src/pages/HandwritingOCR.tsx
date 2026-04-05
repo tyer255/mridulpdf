@@ -507,6 +507,8 @@ const HandwritingOCR = () => {
         t === '[SPACE]' ||
         t.startsWith('[TABLE') ||
         t === '[/TABLE]' ||
+        t === '[TABLE_IMAGE]' ||
+        t === '[/TABLE_IMAGE]' ||
         t.startsWith('[DIAGRAM') ||
         t === '[/DIAGRAM]' ||
         t.startsWith('[ROW]') ||
