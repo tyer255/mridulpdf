@@ -390,6 +390,7 @@ const HandwritingOCR = () => {
     if (text.trim() === '[LINE]') return { text: '', ...tags, isLine: true };
     if (text.trim() === '[SPACE]') return { text: '', ...tags, isSpace: true };
     if (text.trim() === '[TABLE]' || text.trim() === '[/TABLE]' || text.trim().startsWith('[TABLE ')) return { text: '', ...tags, isTable: true };
+    if (text.trim() === '[TABLE_IMAGE]' || text.trim() === '[/TABLE_IMAGE]') return { text: '', ...tags, isDiagram: true }; // Table image fallback uses same rendering as diagrams
     if (text.trim().startsWith('[DIAGRAM]') || text.trim() === '[/DIAGRAM]') return { text: text.replace(/\[\/?DIAGRAM\]/g, '').trim(), ...tags, isDiagram: true };
 
     // Extract right-aligned portion from same line
