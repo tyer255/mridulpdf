@@ -764,9 +764,10 @@ const HandwritingOCR = () => {
         };
         
         let y = topMargin;
-        const renderLines = page.text.split('\n');
+        const renderLines = processedText.split('\n');
         let inTableRender = false;
         let renderTableBuffer: string[] = [];
+        let inDiagramBlock = false;
 
         // Render a grid-format table with colspan/rowspan — proportional column widths + text wrapping
         const renderGridTable = (tLines: string[], startY: number): number => {
