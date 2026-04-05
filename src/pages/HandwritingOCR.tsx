@@ -1057,7 +1057,7 @@ const HandwritingOCR = () => {
             if (!inDiagramBlock) {
               // End of diagram block — embed the original image scaled to fit
               try {
-                const img = new Image();
+                const img = document.createElement('img');
                 img.crossOrigin = 'anonymous';
                 await new Promise<void>((resolve, reject) => {
                   img.onload = () => resolve();
