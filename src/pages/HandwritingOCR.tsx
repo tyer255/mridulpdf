@@ -1050,6 +1050,42 @@ const HandwritingOCR = () => {
             renderTableBuffer.push(rawLine);
             continue;
           }
+
+          // Diagram block — embed original image region
+          if (parsed.isDiagram) {
+            inDiagramBlock = !inDiagramBlock;
+            if (!inDiagramBlock) {
+              // End of diagram block — embed the original image scaled to fit
+              try {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                await new Promise<void>((resolve, reject) => {
+                  img.onload = () => resolve();
+                  img.onerror = reject;
+                  img.src = page.imageUrl;
+                });
+                const imgAspect = img.width / img.height;
+                const availH = Math.min(maxWidth / imgAspect, canvas.height * 0.4);
+                const imgW = availH * imgAspect;
+                const imgX = leftMargin + (maxWidth - imgW) / 2;
+                ctx.drawImage(img, imgX, y, imgW, availH);
+                y += availH + 10 * scale;
+              } catch {
+                // Fallback: show placeholder
+                ctx.fillStyle = '#f0f0f0';
+                ctx.fillRect(leftMargin, y, maxWidth, 80 * scale);
+                ctx.fillStyle = '#999';
+                ctx.font = `${fontSizes.normal}px ${fontFamily}`;
+                ctx.fillText('[Diagram — see original image]', leftMargin + 10 * scale, y + 40 * scale);
+                y += 90 * scale;
+              }
+            }
+            continue;
+          }
+
+          if (inDiagramBlock) {
+            continue; // Skip lines inside diagram block
+          }
           
           // Horizontal separator line
           if (parsed.isLine) {
