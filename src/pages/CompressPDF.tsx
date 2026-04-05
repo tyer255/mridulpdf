@@ -13,6 +13,88 @@ interface CompressionResult {
   name: string;
 }
 
+/**
+ * Real PDF compression: re-renders each page at lower image quality.
+ * Works by drawing PDF pages onto canvas and re-encoding as compressed JPEG images
+ * in a new PDF built with jsPDF.
+ */
+const compressPDFReal = async (
+  file: File,
+  quality: number,
+  onProgress: (p: number) => void
+): Promise<{ blob: Blob; compressedSize: number }> => {
+  const { jsPDF } = await import('jspdf');
+
+  const arrayBuffer = await file.arrayBuffer();
+  const uint8 = new Uint8Array(arrayBuffer);
+
+  // Use pdfjsLib via CDN (already available or load dynamically)
+  let pdfjsLib: any;
+  if ((window as any).pdfjsLib) {
+    pdfjsLib = (window as any).pdfjsLib;
+  } else {
+    // Dynamically load pdf.js
+    await new Promise<void>((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+      script.onload = () => resolve();
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+    pdfjsLib = (window as any).pdfjsLib;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+
+  onProgress(10);
+
+  const loadingTask = pdfjsLib.getDocument({ data: uint8 });
+  const pdfDoc = await loadingTask.promise;
+  const numPages = pdfDoc.numPages;
+
+  onProgress(20);
+
+  // Get first page to determine orientation
+  const firstPage = await pdfDoc.getPage(1);
+  const firstVp = firstPage.getViewport({ scale: 1 });
+  const isLandscape = firstVp.width > firstVp.height;
+
+  const newPdf = new jsPDF(isLandscape ? 'l' : 'p', 'pt', [firstVp.width, firstVp.height]);
+
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d')!;
+
+  for (let i = 1; i <= numPages; i++) {
+    const page = await pdfDoc.getPage(i);
+    // Use scale 1.5 for reasonable quality while reducing size
+    const scale = 1.5;
+    const viewport = page.getViewport({ scale });
+
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+
+    await page.render({ canvasContext: ctx, viewport }).promise;
+
+    // Convert to JPEG at specified quality (this is where real compression happens)
+    const imgData = canvas.toDataURL('image/jpeg', quality);
+
+    if (i > 1) {
+      const pageVp = page.getViewport({ scale: 1 });
+      newPdf.addPage([pageVp.width, pageVp.height], pageVp.width > pageVp.height ? 'l' : 'p');
+    }
+
+    const pageVpUnscaled = page.getViewport({ scale: 1 });
+    newPdf.addImage(imgData, 'JPEG', 0, 0, pageVpUnscaled.width, pageVpUnscaled.height);
+
+    onProgress(20 + Math.round((i / numPages) * 70));
+  }
+
+  onProgress(95);
+  const blob = newPdf.output('blob');
+  onProgress(100);
+
+  return { blob, compressedSize: blob.size };
+};
+
 const CompressPDF = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -46,39 +128,19 @@ const CompressPDF = () => {
     setProgress(0);
 
     try {
-      // Simulate compression progress
-      const progressInterval = setInterval(() => {
-        setProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return prev + Math.random() * 15;
-        });
-      }, 200);
+      const { blob, compressedSize } = await compressPDFReal(
+        selectedFile,
+        0.6, // JPEG quality 60% for good compression
+        (p) => setProgress(p)
+      );
 
-      // Read the PDF file
-      const arrayBuffer = await selectedFile.arrayBuffer();
-      
-      // Simulate compression delay for realistic UX
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      clearInterval(progressInterval);
-      setProgress(100);
-
-      // For now, we'll create a "compressed" version
-      // In a real implementation, this would use a PDF compression library
-      const compressedBlob = new Blob([arrayBuffer], { type: 'application/pdf' });
-      
-      // Simulate some compression (in reality, compression varies)
-      const simulatedSavings = Math.floor(Math.random() * 30) + 10; // 10-40% savings
-      const simulatedCompressedSize = Math.floor(selectedFile.size * (1 - simulatedSavings / 100));
+      const savings = Math.round((1 - compressedSize / selectedFile.size) * 100);
 
       setResult({
         originalSize: selectedFile.size,
-        compressedSize: simulatedCompressedSize,
-        savings: simulatedSavings,
-        blob: compressedBlob,
+        compressedSize,
+        savings: Math.max(savings, 0),
+        blob,
         name: selectedFile.name.replace('.pdf', '_compressed.pdf'),
       });
 
@@ -128,7 +190,7 @@ const CompressPDF = () => {
           </button>
           <div>
             <h1 className="text-lg font-semibold text-white">Compress PDF</h1>
-            <p className="text-xs text-white/50">Reduce file size without quality loss</p>
+            <p className="text-xs text-white/50">Reduce file size with real compression</p>
           </div>
         </div>
       </div>
@@ -141,9 +203,9 @@ const CompressPDF = () => {
               <Sparkles className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h3 className="font-medium text-white text-sm mb-1">Smart Compression</h3>
+              <h3 className="font-medium text-white text-sm mb-1">Real Compression</h3>
               <p className="text-xs text-white/50">
-                Our compression algorithm reduces PDF size by optimizing images and removing unnecessary data while preserving text quality.
+                Re-renders each page at optimized quality, compressing images while preserving text readability.
               </p>
             </div>
           </div>
@@ -231,7 +293,9 @@ const CompressPDF = () => {
                 </div>
                 <div>
                   <p className="text-white font-semibold">Compression Complete!</p>
-                  <p className="text-sm text-green-400">{result.savings}% size reduced</p>
+                  <p className="text-sm text-green-400">
+                    {result.savings > 0 ? `${result.savings}% size reduced` : 'File already optimized'}
+                  </p>
                 </div>
               </div>
 

@@ -150,8 +150,14 @@ MATHEMATICAL CONTENT (IMPORTANT)
 - For complex equations, maintain proper structure with parentheses and operators.
 
 ═══════════════════════════════════════════════════════════════════════════════
-TABLE HANDLING (HIGHEST PRIORITY — GRID-BASED RECONSTRUCTION)
+TABLE HANDLING (HIGHEST PRIORITY — HYBRID APPROACH)
 ═══════════════════════════════════════════════════════════════════════════════
+
+STEP 0 — TABLE CONFIDENCE ASSESSMENT:
+Before attempting table reconstruction, assess your confidence:
+- HIGH confidence (>80%): Clear grid lines, simple structure, no merged cells → Reconstruct as text
+- MEDIUM confidence (50-80%): Some merged cells, clear structure → Reconstruct using grid format
+- LOW confidence (<50%): Complex merges, nested tables, unclear boundaries, handwritten tables → Use [TABLE_IMAGE] tag
 
 STEP 1 — STRUCTURE ANALYSIS (do this BEFORE writing any table output):
 - Count the EXACT number of visible rows and columns in the image.
@@ -159,54 +165,51 @@ STEP 1 — STRUCTURE ANALYSIS (do this BEFORE writing any table output):
 - Identify multi-level headers (e.g., a top header spanning sub-headers below it).
 - Build a mental GRID where each cell has coordinates (row, col).
 
-STEP 2 — GRID REPRESENTATION:
-Output the table inside [TABLE] and [/TABLE] tags using an EXTENDED markdown format.
+STEP 2 — DECISION:
+IF confidence is HIGH or MEDIUM:
+  Output the table inside [TABLE] and [/TABLE] tags using text reconstruction.
 
-For SIMPLE tables (no merged cells), use standard markdown:
-  [TABLE]
-  | Col1 | Col2 | Col3 |
-  |------|------|------|
-  | val  | val  | val  |
-  [/TABLE]
+  For SIMPLE tables (no merged cells), use standard markdown:
+    [TABLE]
+    | Col1 | Col2 | Col3 |
+    |------|------|------|
+    | val  | val  | val  |
+    [/TABLE]
 
-For COMPLEX tables with merged cells, use the grid format with cell metadata:
-  [TABLE grid=true]
-  [ROW]
-  [CELL colspan=3][BOLD]Main Heading[/BOLD][/CELL]
-  [/ROW]
-  [ROW]
-  [CELL]Sub A[/CELL]
-  [CELL colspan=2]Sub B[/CELL]
-  [/ROW]
-  [ROW]
-  [CELL rowspan=2]Left[/CELL]
-  [CELL]B1[/CELL]
-  [CELL]C1[/CELL]
-  [/ROW]
-  [ROW]
-  [CELL]B2[/CELL]
-  [CELL]C2[/CELL]
-  [/ROW]
-  [/TABLE]
+  For tables with merged cells, use the grid format:
+    [TABLE grid=true]
+    [ROW]
+    [CELL colspan=3][BOLD]Main Heading[/BOLD][/CELL]
+    [/ROW]
+    [ROW]
+    [CELL]Sub A[/CELL]
+    [CELL colspan=2]Sub B[/CELL]
+    [/ROW]
+    [/TABLE]
+
+IF confidence is LOW:
+  Use [TABLE_IMAGE] tag to tell the renderer to embed the original image:
+    [TABLE_IMAGE]
+    Description of the table content for accessibility
+    [/TABLE_IMAGE]
+  This ensures the table is preserved as a clean image rather than broken text.
 
 RULES for grid format:
 - Each [ROW]...[/ROW] is one visual row.
-- Each [CELL]...[/CELL] is one cell. Add colspan=N or rowspan=N attributes when a cell spans multiple columns/rows.
-- When a cell is covered by a rowspan from a row above, do NOT add an extra [CELL] for it — the spanning cell already covers that position.
+- Each [CELL]...[/CELL] is one cell. Add colspan=N or rowspan=N attributes when needed.
+- When a cell is covered by a rowspan from above, do NOT add an extra [CELL].
 - Maintain the EXACT number of logical columns across all rows.
 - Use [BOLD] inside [CELL] for header cells.
 
-STEP 3 — VALIDATION:
+STEP 3 — VALIDATION (for text-reconstructed tables only):
 - Verify every row has the correct number of logical columns (accounting for spans).
 - Verify no cell content is missing or truncated.
-- Verify merged cells match the original image exactly.
+- If validation fails → switch to [TABLE_IMAGE] instead.
 
 CRITICAL TABLE RULES:
+- NEVER output a broken or misaligned table. Use [TABLE_IMAGE] if uncertain.
 - Do NOT simplify tables into plain text.
 - Do NOT skip any column, row, or merged header.
-- Do NOT break merged cells into separate cells.
-- Preserve the exact hierarchy of headings and subheadings.
-- All cell text must be fully visible — no cut-off content.
 - Fit table proportionally — maintain balanced column widths.
 
 ═══════════════════════════════════════════════════════════════════════════════
