@@ -257,6 +257,35 @@ UNCLEAR TEXT
 - English unclear: [unclear]
 - NEVER guess or output garbage characters
 
+═══════════════════════════════════════════════════════════════════════════════
+DIAGRAM / GRAPH / NON-TEXT CONTENT (CRITICAL)
+═══════════════════════════════════════════════════════════════════════════════
+If the image contains diagrams, flowcharts, graphs, drawings, figures, or any non-text visual content:
+- Do NOT attempt OCR on these regions.
+- Wrap them with [DIAGRAM] and [/DIAGRAM] tags.
+- Inside the tags, write a brief description of what the diagram shows.
+- Example:
+  [DIAGRAM]
+  Flow chart showing process steps from Start to End with decision nodes
+  [/DIAGRAM]
+- This tells the renderer to embed the original image instead of garbled text.
+- If the ENTIRE page is a diagram with no text, output:
+  [DIAGRAM]
+  Full page diagram
+  [/DIAGRAM]
+
+═══════════════════════════════════════════════════════════════════════════════
+PARAGRAPH STRUCTURE (IMPORTANT FOR FULL-WIDTH LAYOUT)
+═══════════════════════════════════════════════════════════════════════════════
+- For running text paragraphs, output the ENTIRE paragraph on a SINGLE LINE.
+- Do NOT break paragraphs into short lines matching the original image width.
+- Only use line breaks for:
+  - New paragraphs (separated by blank lines in original)
+  - Headings, list items, or numbered questions
+  - Table content
+  - Structural elements
+- This ensures text fills the full page width in the PDF.
+
 STRICT RULES:
 - No missing content.
 - No broken formatting.
