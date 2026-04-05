@@ -491,6 +491,59 @@ const HandwritingOCR = () => {
   const isGridTable = (tableLines: string[]): boolean => {
     return tableLines.some(l => l.trim().startsWith('[ROW]'));
   };
+  // Preprocess OCR text: merge consecutive plain-text lines into paragraphs
+  // so text fills the full page width instead of creating narrow columns.
+  const mergeTextIntoParagraphs = (rawText: string): string => {
+    const lines = rawText.split('\n');
+    const merged: string[] = [];
+    let paragraphBuffer = '';
+
+    const isSpecialLine = (line: string): boolean => {
+      const t = line.trim();
+      return (
+        t === '' ||
+        t === '[LINE]' ||
+        t === '[SPACE]' ||
+        t.startsWith('[TABLE') ||
+        t === '[/TABLE]' ||
+        t.startsWith('[DIAGRAM') ||
+        t === '[/DIAGRAM]' ||
+        t.startsWith('[ROW]') ||
+        t === '[/ROW]' ||
+        t.startsWith('[CELL') ||
+        t === '[/CELL]' ||
+        t.startsWith('[H1]') ||
+        t.startsWith('[H2]') ||
+        t.startsWith('[H3]') ||
+        t.startsWith('[HEADER]') ||
+        t.startsWith('[FOOTER]') ||
+        t.startsWith('[CENTER]') ||
+        t.startsWith('[RIGHT]') ||
+        t.includes('[RIGHT]') // mixed left+right line
+      );
+    };
+
+    const flushParagraph = () => {
+      if (paragraphBuffer.trim()) {
+        merged.push(paragraphBuffer.trim());
+        paragraphBuffer = '';
+      }
+    };
+
+    for (const line of lines) {
+      if (isSpecialLine(line)) {
+        flushParagraph();
+        merged.push(line);
+      } else {
+        // Append to current paragraph with a space
+        paragraphBuffer += (paragraphBuffer ? ' ' : '') + line.trim();
+      }
+    }
+    flushParagraph();
+
+    return merged.join('\n');
+  };
+
   // Create PDF from extracted text - layout-aware rendering with dynamic sizing
   const createPDF = async () => {
     if (extractedPages.length === 0) return;
@@ -509,6 +562,8 @@ const HandwritingOCR = () => {
         if (i > 0) pdf.addPage();
         
         const page = extractedPages[i];
+        // Merge plain text lines into paragraphs for full-width layout
+        const processedText = mergeTextIntoParagraphs(page.text);
         
         const canvas = document.createElement('canvas');
         const scale = 3;
@@ -523,10 +578,10 @@ const HandwritingOCR = () => {
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        const leftMargin = 25 * scale;
-        const rightMargin = 25 * scale;
-        const topMargin = 25 * scale;
-        const indentMargin = 50 * scale;
+        const leftMargin = 20 * scale;
+        const rightMargin = 20 * scale;
+        const topMargin = 20 * scale;
+        const indentMargin = 45 * scale;
         const maxWidth = canvas.width - leftMargin - rightMargin;
         
         const fontFamily = '"Noto Sans Devanagari", "Mangal", "Arial Unicode MS", sans-serif';
@@ -549,7 +604,7 @@ const HandwritingOCR = () => {
           };
 
           let totalHeight = topMargin;
-          const lines = page.text.split('\n');
+          const lines = processedText.split('\n');
           let inTable = false;
           let tableBuffer: string[] = [];
 
