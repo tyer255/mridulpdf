@@ -1064,11 +1064,11 @@ const HandwritingOCR = () => {
             continue;
           }
 
-          // Diagram block — embed original image region
-          if (parsed.isDiagram) {
+          // Diagram or TABLE_IMAGE block — embed original image region
+          if (parsed.isDiagram || parsed.isTableImage) {
             inDiagramBlock = !inDiagramBlock;
             if (!inDiagramBlock) {
-              // End of diagram block — embed the original image scaled to fit
+              // End of block — embed the original image scaled to fit
               try {
                 const img = document.createElement('img');
                 img.crossOrigin = 'anonymous';
@@ -1089,7 +1089,7 @@ const HandwritingOCR = () => {
                 ctx.fillRect(leftMargin, y, maxWidth, 80 * scale);
                 ctx.fillStyle = '#999';
                 ctx.font = `${fontSizes.normal}px ${fontFamily}`;
-                ctx.fillText('[Diagram — see original image]', leftMargin + 10 * scale, y + 40 * scale);
+                ctx.fillText('[Content — see original image]', leftMargin + 10 * scale, y + 40 * scale);
                 y += 90 * scale;
               }
             }
