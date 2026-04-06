@@ -41,23 +41,12 @@ const Login = () => {
     }
   }, [authLoading, isAuthenticated, getUserId, navigate]);
 
-  const handleGoogleLogin = async () => {
-    setGoogleLoading(true);
-    try {
-      const { error } = await lovable.auth.signInWithOAuth('google', {
-        redirect_uri: `${window.location.origin}/home`,
-        extraParams: {
-          prompt: 'select_account',
-        },
-      });
-      if (error) {
-        toast({ title: "Login Error", description: error.message, variant: "destructive" });
-      }
-    } catch {
-      toast({ title: "Error", description: "Failed to initiate Google login", variant: "destructive" });
-    } finally {
-      setGoogleLoading(false);
-    }
+  const handleGoogleLogin = () => {
+    toast({
+      title: "Google Login Currently Not Supported",
+      description: "Please use Email or Guest login/signup instead.",
+      variant: "destructive",
+    });
   };
 
   const handleEmailLogin = async () => {
