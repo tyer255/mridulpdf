@@ -384,14 +384,16 @@ const HandwritingOCR = () => {
 
   // Parse layout tags from OCR output — strips ALL tags from visible text
   const parseLayoutLine = (line: string) => {
-    const tags: { align?: 'center' | 'right'; size?: 'h1' | 'h2' | 'h3' | 'small'; bold?: boolean; indent?: boolean; isLine?: boolean; isSpace?: boolean; isHeader?: boolean; isFooter?: boolean; isTable?: boolean; isDiagram?: boolean; rightText?: string } = {};
+    const tags: { align?: 'center' | 'right'; size?: 'h1' | 'h2' | 'h3' | 'small'; bold?: boolean; indent?: boolean; isLine?: boolean; isSpace?: boolean; isHeader?: boolean; isFooter?: boolean; isTable?: boolean; isDiagram?: boolean; isTableImage?: boolean; rightText?: string } = {};
     let text = line;
 
     if (text.trim() === '[LINE]') return { text: '', ...tags, isLine: true };
     if (text.trim() === '[SPACE]') return { text: '', ...tags, isSpace: true };
     if (text.trim() === '[TABLE]' || text.trim() === '[/TABLE]' || text.trim().startsWith('[TABLE ')) return { text: '', ...tags, isTable: true };
-    if (text.trim() === '[TABLE_IMAGE]' || text.trim() === '[/TABLE_IMAGE]') return { text: '', ...tags, isDiagram: true }; // Table image fallback uses same rendering as diagrams
-    if (text.trim().startsWith('[DIAGRAM]') || text.trim() === '[/DIAGRAM]') return { text: text.replace(/\[\/?DIAGRAM\]/g, '').trim(), ...tags, isDiagram: true };
+    if (text.trim() === '[TABLE_IMAGE]') return { text: '', ...tags, isTableImage: true };
+    if (text.trim() === '[/TABLE_IMAGE]') return { text: '', ...tags, isTableImage: true };
+    if (text.trim() === '[DIAGRAM]') return { text: '', ...tags, isDiagram: true };
+    if (text.trim() === '[/DIAGRAM]') return { text: '', ...tags, isDiagram: true };
 
     // Extract right-aligned portion from same line
     const rightMatch = text.match(/\[RIGHT\](.*?)\[\/RIGHT\]/);
