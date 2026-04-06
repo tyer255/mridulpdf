@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
-import { lovable } from '@/integrations/lovable';
+
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Mail, LogIn, UserPlus, Eye, EyeOff } from 'lucide-react';
@@ -20,7 +20,7 @@ const Login = () => {
   const [guestId, setGuestId] = useState('');
   const [showPopup, setShowPopup] = useState(false);
   const [newGuestId, setNewGuestId] = useState('');
-  const [googleLoading, setGoogleLoading] = useState(false);
+  
   
   // Email auth states
   const [emailTab, setEmailTab] = useState<'login' | 'signup'>('login');
