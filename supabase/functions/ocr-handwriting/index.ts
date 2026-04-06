@@ -147,73 +147,59 @@ MATHEMATICAL CONTENT (IMPORTANT)
 - Chemical formulas: H₂O, H₂SO₄, NaOH, CO₂, K₂Cr₂O₇
 - Fractions: ½ ⅓ ¼ ⅔ ¾ or use a/b format
 - Do NOT skip or simplify any equation. Reproduce exactly.
-- For complex equations, maintain proper structure with parentheses and operators.
 
 ═══════════════════════════════════════════════════════════════════════════════
-TABLE HANDLING (HIGHEST PRIORITY — HYBRID APPROACH)
+TABLE HANDLING — STRICT HYBRID MODE (HIGHEST PRIORITY)
 ═══════════════════════════════════════════════════════════════════════════════
 
-STEP 0 — TABLE CONFIDENCE ASSESSMENT:
-Before attempting table reconstruction, assess your confidence:
-- HIGH confidence (>80%): Clear grid lines, simple structure, no merged cells → Reconstruct as text
-- MEDIUM confidence (50-80%): Some merged cells, clear structure → Reconstruct using grid format
-- LOW confidence (<50%): Complex merges, nested tables, unclear boundaries, handwritten tables → Use [TABLE_IMAGE] tag
+DEFAULT BEHAVIOR: USE [TABLE_IMAGE] FOR ALL TABLES.
+Only reconstruct a table as text if ALL of these conditions are true:
+  1. The table has ≤ 4 columns AND ≤ 6 rows
+  2. NO merged cells, NO multi-level headers, NO nested tables
+  3. ALL cell content is short (≤ 15 characters per cell)
+  4. The table has clear, simple grid lines
+  5. You are 95%+ confident in the structure
 
-STEP 1 — STRUCTURE ANALYSIS (do this BEFORE writing any table output):
-- Count the EXACT number of visible rows and columns in the image.
-- Identify ALL merged cells: which cells span multiple columns (colspan) or rows (rowspan).
-- Identify multi-level headers (e.g., a top header spanning sub-headers below it).
-- Build a mental GRID where each cell has coordinates (row, col).
+If ANY condition above is NOT met → USE [TABLE_IMAGE] immediately. Do NOT attempt text reconstruction.
 
-STEP 2 — DECISION:
-IF confidence is HIGH or MEDIUM:
-  Output the table inside [TABLE] and [/TABLE] tags using text reconstruction.
+FOR SIMPLE TABLES (all 5 conditions met):
+  [TABLE]
+  | Col1 | Col2 | Col3 |
+  |------|------|------|
+  | val  | val  | val  |
+  [/TABLE]
 
-  For SIMPLE tables (no merged cells), use standard markdown:
-    [TABLE]
-    | Col1 | Col2 | Col3 |
-    |------|------|------|
-    | val  | val  | val  |
-    [/TABLE]
-
-  For tables with merged cells, use the grid format:
-    [TABLE grid=true]
-    [ROW]
-    [CELL colspan=3][BOLD]Main Heading[/BOLD][/CELL]
-    [/ROW]
-    [ROW]
-    [CELL]Sub A[/CELL]
-    [CELL colspan=2]Sub B[/CELL]
-    [/ROW]
-    [/TABLE]
-
-IF confidence is LOW:
-  Use [TABLE_IMAGE] tag to tell the renderer to embed the original image:
-    [TABLE_IMAGE]
-    Description of the table content for accessibility
-    [/TABLE_IMAGE]
-  This ensures the table is preserved as a clean image rather than broken text.
-
-RULES for grid format:
-- Each [ROW]...[/ROW] is one visual row.
-- Each [CELL]...[/CELL] is one cell. Add colspan=N or rowspan=N attributes when needed.
-- When a cell is covered by a rowspan from above, do NOT add an extra [CELL].
-- Maintain the EXACT number of logical columns across all rows.
-- Use [BOLD] inside [CELL] for header cells.
-
-STEP 3 — VALIDATION (for text-reconstructed tables only):
-- Verify every row has the correct number of logical columns (accounting for spans).
-- Verify no cell content is missing or truncated.
-- If validation fails → switch to [TABLE_IMAGE] instead.
+FOR ALL OTHER TABLES (DEFAULT):
+  [TABLE_IMAGE]
+  Brief description of the table for accessibility
+  [/TABLE_IMAGE]
 
 CRITICAL TABLE RULES:
-- NEVER output a broken or misaligned table. Use [TABLE_IMAGE] if uncertain.
-- Do NOT simplify tables into plain text.
-- Do NOT skip any column, row, or merged header.
-- Fit table proportionally — maintain balanced column widths.
+- When in doubt, ALWAYS use [TABLE_IMAGE]. Never guess.
+- A broken text table is WORSE than an image table.
+- Handwritten tables → ALWAYS [TABLE_IMAGE]
+- Tables with Hindi text → ALWAYS [TABLE_IMAGE]
+- Tables with merged cells → ALWAYS [TABLE_IMAGE]
+- Tables with > 4 columns → ALWAYS [TABLE_IMAGE]
 
 ═══════════════════════════════════════════════════════════════════════════════
-LAYOUT TAGS (use to replicate EXACT positioning)
+DIAGRAM / GRAPH / NON-TEXT CONTENT (CRITICAL)
+═══════════════════════════════════════════════════════════════════════════════
+If the image contains diagrams, flowcharts, graphs, drawings, figures, chemical structures, circuits, maps, or any non-text visual content:
+- Do NOT attempt OCR on these regions.
+- Wrap them with [DIAGRAM] and [/DIAGRAM] tags.
+- Inside the tags, write a brief description.
+- Example:
+  [DIAGRAM]
+  Flow chart showing process steps from Start to End with decision nodes
+  [/DIAGRAM]
+- If the ENTIRE page is a diagram with no text, output:
+  [DIAGRAM]
+  Full page diagram/figure
+  [/DIAGRAM]
+
+═══════════════════════════════════════════════════════════════════════════════
+LAYOUT TAGS
 ═══════════════════════════════════════════════════════════════════════════════
 
 ALIGNMENT:
@@ -221,9 +207,9 @@ ALIGNMENT:
   [RIGHT]text[/RIGHT] — right-aligned text
   No tag = left-aligned (default)
 
-FONT HIERARCHY (match EXACTLY what's in the original):
-  [H1]text[/H1] — Largest heading (institution name, main title)
-  [H2]text[/H2] — Section heading (SECTION – A, PART – B)
+FONT HIERARCHY:
+  [H1]text[/H1] — Largest heading
+  [H2]text[/H2] — Section heading
   [H3]text[/H3] — Sub-heading
   [BOLD]text[/BOLD] — Bold inline text
   [SMALL]text[/SMALL] — Fine print, footer text
@@ -231,7 +217,7 @@ FONT HIERARCHY (match EXACTLY what's in the original):
 STRUCTURE:
   [LINE] — Horizontal separator (only where one EXISTS in original)
   [SPACE] — Blank line gap (only where one EXISTS in original)
-  [INDENT]text[/INDENT] — Indented text (sub-questions, options)
+  [INDENT]text[/INDENT] — Indented text
 
 HEADER/FOOTER:
   [HEADER]text[/HEADER] — Document header block
@@ -245,13 +231,24 @@ If left and right text are on the SAME line:
 Do NOT split them into separate lines.
 
 ═══════════════════════════════════════════════════════════════════════════════
+PARAGRAPH STRUCTURE (IMPORTANT FOR FULL-WIDTH LAYOUT)
+═══════════════════════════════════════════════════════════════════════════════
+- For running text paragraphs, output the ENTIRE paragraph on a SINGLE LINE.
+- Do NOT break paragraphs into short lines matching the original image width.
+- Only use line breaks for:
+  - New paragraphs (separated by blank lines in original)
+  - Headings, list items, or numbered questions
+  - Table/diagram markers
+  - Structural elements
+- This ensures text fills the full page width in the PDF.
+
+═══════════════════════════════════════════════════════════════════════════════
 CHARACTER PRECISION
 ═══════════════════════════════════════════════════════════════════════════════
 - Distinguish carefully: 1/I/l, 0/O, 5/S, 8/B, rn/m, cl/d
 - Preserve EXACT capitalization as in original
-- Keep original punctuation (periods, commas, colons) exactly
+- Keep original punctuation exactly
 - Numbers must be exact — verify each digit
-- Keep exact numbering format: Q.1, 1., (a), (i), i), I., etc.
 
 ═══════════════════════════════════════════════════════════════════════════════
 UNCLEAR TEXT
@@ -260,42 +257,11 @@ UNCLEAR TEXT
 - English unclear: [unclear]
 - NEVER guess or output garbage characters
 
-═══════════════════════════════════════════════════════════════════════════════
-DIAGRAM / GRAPH / NON-TEXT CONTENT (CRITICAL)
-═══════════════════════════════════════════════════════════════════════════════
-If the image contains diagrams, flowcharts, graphs, drawings, figures, or any non-text visual content:
-- Do NOT attempt OCR on these regions.
-- Wrap them with [DIAGRAM] and [/DIAGRAM] tags.
-- Inside the tags, write a brief description of what the diagram shows.
-- Example:
-  [DIAGRAM]
-  Flow chart showing process steps from Start to End with decision nodes
-  [/DIAGRAM]
-- This tells the renderer to embed the original image instead of garbled text.
-- If the ENTIRE page is a diagram with no text, output:
-  [DIAGRAM]
-  Full page diagram
-  [/DIAGRAM]
-
-═══════════════════════════════════════════════════════════════════════════════
-PARAGRAPH STRUCTURE (IMPORTANT FOR FULL-WIDTH LAYOUT)
-═══════════════════════════════════════════════════════════════════════════════
-- For running text paragraphs, output the ENTIRE paragraph on a SINGLE LINE.
-- Do NOT break paragraphs into short lines matching the original image width.
-- Only use line breaks for:
-  - New paragraphs (separated by blank lines in original)
-  - Headings, list items, or numbered questions
-  - Table content
-  - Structural elements
-- This ensures text fills the full page width in the PDF.
-
 STRICT RULES:
-- No missing content.
-- No broken formatting.
-- No overlapping text.
-- No incomplete tables.
-- No incorrect symbols.
-- No corrupted or unreadable language output.
+- No missing content. No broken formatting. No overlapping text.
+- No incomplete or broken tables — use [TABLE_IMAGE] instead.
+- No incorrect symbols. No corrupted language output.
+- Accuracy is MORE important than speed.
 
 Return ONLY the formatted text with layout tags, nothing else.`;
 
@@ -314,7 +280,7 @@ Return ONLY the formatted text with layout tags, nothing else.`;
             content: [
               {
                 type: 'text',
-                text: 'Extract ALL text from this image and reconstruct the EXACT document layout using the formatting tags specified. Preserve every heading, alignment, spacing, numbering, and structure exactly as it appears in the original. Use [CENTER], [RIGHT], [H1], [H2], [H3], [BOLD], [LINE], [SPACE], [INDENT], [HEADER], [FOOTER], [SMALL] tags appropriately. The goal is a pixel-perfect text reconstruction of the original document.'
+                text: 'Extract ALL text from this image using STRICT HYBRID MODE. For tables: DEFAULT to [TABLE_IMAGE] unless the table is very simple (≤4 cols, ≤6 rows, no merged cells, short text). For diagrams/charts/drawings: ALWAYS use [DIAGRAM] tags. For plain text: extract with full paragraph merging and proper Hindi Unicode. Use layout tags ([CENTER], [RIGHT], [H1]-[H3], [BOLD], [LINE], [SPACE], [INDENT], [HEADER], [FOOTER], [SMALL]) to match original positioning. NEVER output broken tables — use [TABLE_IMAGE] when uncertain.'
               },
               {
                 type: 'image_url',
