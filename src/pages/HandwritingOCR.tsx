@@ -719,7 +719,7 @@ const HandwritingOCR = () => {
 
             if (parsed.isDiagram || parsed.isTableImage) {
               inDiag = !inDiag;
-              if (!inDiag) totalHeight += canvas.height * 0.35; // reserve space for embedded image
+              if (!inDiag) totalHeight += canvas.height * 0.45; // reserve space for embedded image (matches render cap)
               continue;
             }
             if (inDiag) continue;
