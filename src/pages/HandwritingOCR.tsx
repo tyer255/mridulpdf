@@ -794,6 +794,7 @@ const HandwritingOCR = () => {
         let inTableRender = false;
         let renderTableBuffer: string[] = [];
         let inDiagramBlock = false;
+        let pendingBbox: { x: number; y: number; w: number; h: number } | undefined;
 
         // Render a grid-format table with colspan/rowspan — proportional column widths + text wrapping
         const renderGridTable = (tLines: string[], startY: number): number => {
@@ -1080,8 +1081,11 @@ const HandwritingOCR = () => {
           // Diagram or TABLE_IMAGE block — embed original image region
           if (parsed.isDiagram || parsed.isTableImage) {
             inDiagramBlock = !inDiagramBlock;
-            if (!inDiagramBlock) {
-              // End of block — embed the original image scaled to fit
+            if (inDiagramBlock) {
+              // Opening tag — capture bbox if present
+              pendingBbox = parsed.bbox;
+            } else {
+              // End of block — embed the cropped image region using bbox if available
               try {
                 const img = document.createElement('img');
                 img.crossOrigin = 'anonymous';
@@ -1090,12 +1094,31 @@ const HandwritingOCR = () => {
                   img.onerror = reject;
                   img.src = page.imageUrl;
                 });
-                const imgAspect = img.width / img.height;
-                const availH = Math.min(maxWidth / imgAspect, canvas.height * 0.4);
-                const imgW = availH * imgAspect;
+
+                // Determine source crop rectangle
+                let sx = 0, sy = 0, sW = img.width, sH = img.height;
+                if (pendingBbox && pendingBbox.w > 0 && pendingBbox.h > 0) {
+                  // Clamp to image bounds, no extra padding
+                  sx = Math.max(0, Math.min(img.width - 1, pendingBbox.x * img.width));
+                  sy = Math.max(0, Math.min(img.height - 1, pendingBbox.y * img.height));
+                  sW = Math.max(1, Math.min(img.width - sx, pendingBbox.w * img.width));
+                  sH = Math.max(1, Math.min(img.height - sy, pendingBbox.h * img.height));
+                }
+
+                const cropAspect = sW / sH;
+                // Fit within page width; cap at 55% of page height for tables/diagrams
+                let imgW = maxWidth;
+                let imgH = imgW / cropAspect;
+                const maxBlockH = canvas.height * 0.55;
+                if (imgH > maxBlockH) {
+                  imgH = maxBlockH;
+                  imgW = imgH * cropAspect;
+                }
                 const imgX = leftMargin + (maxWidth - imgW) / 2;
-                ctx.drawImage(img, imgX, y, imgW, availH);
-                y += availH + 10 * scale;
+
+                // Draw the SOURCE region (sx,sy,sW,sH) into the destination
+                ctx.drawImage(img, sx, sy, sW, sH, imgX, y, imgW, imgH);
+                y += imgH + 10 * scale;
               } catch {
                 // Fallback: show placeholder
                 ctx.fillStyle = '#f0f0f0';
@@ -1105,6 +1128,7 @@ const HandwritingOCR = () => {
                 ctx.fillText('[Content — see original image]', leftMargin + 10 * scale, y + 40 * scale);
                 y += 90 * scale;
               }
+              pendingBbox = undefined;
             }
             continue;
           }
