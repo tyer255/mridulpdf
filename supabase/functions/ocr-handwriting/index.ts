@@ -190,6 +190,25 @@ CRITICAL TABLE RULES:
 - Coordinates MUST tightly fit the table (include borders, exclude surrounding text/margins).
 - Do NOT mix table cell text with surrounding paragraph text — the cropped region replaces it.
 
+BOUNDING BOX ACCURACY (CRITICAL — most common failure):
+- The bbox MUST include EVERY column from the leftmost border to the rightmost border.
+  Look carefully — small narrow columns at the left (e.g. "क्र.सं", "S.No", "#") and
+  at the right (e.g. "Avg", "औसत", "Remarks") are OFTEN missed. Include them.
+- The bbox MUST include the FULL header row(s) at the top, including any multi-level
+  headers, AND any sub-header rows directly below.
+- Add a small safety margin of ~0.01 (1% of image) on each side so no border line is clipped.
+- Verify mentally: if you cropped the image at (x, y, x+w, y+h), would EVERY cell of the
+  table — including the first/last columns and the topmost header — be fully visible?
+  If not, EXPAND the bbox before outputting it.
+- Prefer slightly LARGER over slightly smaller. Clipping a column is a critical failure.
+
+PAGE BOUNDARIES (avoid duplicate content):
+- Each input image is ONE page. Extract ONLY content that visually belongs to THIS page.
+- If the image shows a sliver of the previous page at the top (e.g. a footer like
+  "Page 1 of 2", a chapter title, or the bottom of a previous figure), DO NOT extract
+  that sliver. Skip it entirely and start with this page's actual content.
+- Never repeat content that obviously belongs to a different page.
+
 ═══════════════════════════════════════════════════════════════════════════════
 DIAGRAM / GRAPH / NON-TEXT CONTENT (CRITICAL)
 ═══════════════════════════════════════════════════════════════════════════════
