@@ -290,7 +290,7 @@ Return ONLY the formatted text with layout tags, nothing else.`;
             content: [
               {
                 type: 'text',
-                text: 'Extract ALL text from this image using STRICT HYBRID MODE. For tables: DEFAULT to [TABLE_IMAGE] unless the table is very simple (≤4 cols, ≤6 rows, no merged cells, short text). For diagrams/charts/drawings: ALWAYS use [DIAGRAM] tags. For plain text: extract with full paragraph merging and proper Hindi Unicode. Use layout tags ([CENTER], [RIGHT], [H1]-[H3], [BOLD], [LINE], [SPACE], [INDENT], [HEADER], [FOOTER], [SMALL]) to match original positioning. NEVER output broken tables — use [TABLE_IMAGE] when uncertain.'
+                text: 'Extract ALL text using STRICT HYBRID MODE with structure-based detection. For ANY table that is complex (merged cells, multi-line cells, long-text columns like addresses, mixed alignment, handwritten, Hindi) → output [TABLE_IMAGE x=.. y=.. w=.. h=..] with TIGHT normalized bbox (0-1, 3 decimals). For diagrams/charts/drawings/figures → [DIAGRAM x=.. y=.. w=.. h=..] with TIGHT normalized bbox. Do NOT include extra whitespace margins in the bbox; do NOT clip content. For plain text: merge wrapped lines into full-width paragraphs, proper Devanagari Unicode for Hindi. Use layout tags ([CENTER], [RIGHT], [H1]-[H3], [BOLD], [LINE], [SPACE], [INDENT], [HEADER], [FOOTER], [SMALL]). Preserve top-to-bottom flow exactly. NEVER mix table content with paragraph text.'
               },
               {
                 type: 'image_url',
