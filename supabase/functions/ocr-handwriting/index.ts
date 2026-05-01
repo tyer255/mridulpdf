@@ -153,14 +153,19 @@ TABLE HANDLING — STRICT HYBRID MODE (HIGHEST PRIORITY)
 ═══════════════════════════════════════════════════════════════════════════════
 
 DEFAULT BEHAVIOR: USE [TABLE_IMAGE] FOR ALL TABLES.
-Only reconstruct a table as text if ALL of these conditions are true:
-  1. The table has ≤ 4 columns AND ≤ 6 rows
-  2. NO merged cells, NO multi-level headers, NO nested tables
-  3. ALL cell content is short (≤ 15 characters per cell)
-  4. The table has clear, simple grid lines
-  5. You are 95%+ confident in the structure
+Use STRUCTURE-BASED detection (not just fixed limits). Reconstruct as text ONLY if ALL true:
+  1. Truly simple grid: visible regular grid lines, no merged cells, no multi-level headers
+  2. Every cell text is SHORT (≤ 15 chars) and SINGLE-LINE
+  3. Uniform alignment in every column (no mixed left/right/center)
+  4. No long-text columns (no addresses, descriptions, paragraphs)
+  5. Confidence ≥ 95% on every cell value
 
-If ANY condition above is NOT met → USE [TABLE_IMAGE] immediately. Do NOT attempt text reconstruction.
+If ANY of these is uncertain → USE [TABLE_IMAGE] immediately.
+
+COORDINATE OUTPUT (CRITICAL — required for image cropping):
+You MUST output the bounding box of the table region as NORMALIZED coordinates
+(values between 0 and 1, relative to the full image: x = left/width, y = top/height,
+ w = box_width/width, h = box_height/height). Use 3 decimal places.
 
 FOR SIMPLE TABLES (all 5 conditions met):
   [TABLE]
@@ -170,7 +175,7 @@ FOR SIMPLE TABLES (all 5 conditions met):
   [/TABLE]
 
 FOR ALL OTHER TABLES (DEFAULT):
-  [TABLE_IMAGE]
+  [TABLE_IMAGE x=0.05 y=0.32 w=0.90 h=0.28]
   Brief description of the table for accessibility
   [/TABLE_IMAGE]
 
@@ -180,21 +185,26 @@ CRITICAL TABLE RULES:
 - Handwritten tables → ALWAYS [TABLE_IMAGE]
 - Tables with Hindi text → ALWAYS [TABLE_IMAGE]
 - Tables with merged cells → ALWAYS [TABLE_IMAGE]
-- Tables with > 4 columns → ALWAYS [TABLE_IMAGE]
+- Tables with multi-line cells (e.g., address columns) → ALWAYS [TABLE_IMAGE]
+- Tables with mixed alignment within a column → ALWAYS [TABLE_IMAGE]
+- Coordinates MUST tightly fit the table (include borders, exclude surrounding text/margins).
+- Do NOT mix table cell text with surrounding paragraph text — the cropped region replaces it.
 
 ═══════════════════════════════════════════════════════════════════════════════
 DIAGRAM / GRAPH / NON-TEXT CONTENT (CRITICAL)
 ═══════════════════════════════════════════════════════════════════════════════
 If the image contains diagrams, flowcharts, graphs, drawings, figures, chemical structures, circuits, maps, or any non-text visual content:
 - Do NOT attempt OCR on these regions.
-- Wrap them with [DIAGRAM] and [/DIAGRAM] tags.
+- Wrap them with [DIAGRAM x=.. y=.. w=.. h=..] and [/DIAGRAM] tags using NORMALIZED bbox
+  coordinates (0–1, 3 decimal places) that TIGHTLY enclose the diagram (no extra margin,
+  no clipping).
 - Inside the tags, write a brief description.
 - Example:
-  [DIAGRAM]
+  [DIAGRAM x=0.10 y=0.45 w=0.80 h=0.30]
   Flow chart showing process steps from Start to End with decision nodes
   [/DIAGRAM]
 - If the ENTIRE page is a diagram with no text, output:
-  [DIAGRAM]
+  [DIAGRAM x=0.000 y=0.000 w=1.000 h=1.000]
   Full page diagram/figure
   [/DIAGRAM]
 
