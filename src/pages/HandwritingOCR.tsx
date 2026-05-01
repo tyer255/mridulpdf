@@ -384,15 +384,28 @@ const HandwritingOCR = () => {
 
   // Parse layout tags from OCR output — strips ALL tags from visible text
   const parseLayoutLine = (line: string) => {
-    const tags: { align?: 'center' | 'right'; size?: 'h1' | 'h2' | 'h3' | 'small'; bold?: boolean; indent?: boolean; isLine?: boolean; isSpace?: boolean; isHeader?: boolean; isFooter?: boolean; isTable?: boolean; isDiagram?: boolean; isTableImage?: boolean; rightText?: string } = {};
+    const tags: { align?: 'center' | 'right'; size?: 'h1' | 'h2' | 'h3' | 'small'; bold?: boolean; indent?: boolean; isLine?: boolean; isSpace?: boolean; isHeader?: boolean; isFooter?: boolean; isTable?: boolean; isDiagram?: boolean; isTableImage?: boolean; rightText?: string; bbox?: { x: number; y: number; w: number; h: number } } = {};
     let text = line;
 
     if (text.trim() === '[LINE]') return { text: '', ...tags, isLine: true };
     if (text.trim() === '[SPACE]') return { text: '', ...tags, isSpace: true };
     if (text.trim() === '[TABLE]' || text.trim() === '[/TABLE]' || text.trim().startsWith('[TABLE ')) return { text: '', ...tags, isTable: true };
-    if (text.trim() === '[TABLE_IMAGE]') return { text: '', ...tags, isTableImage: true };
+
+    // Parse bbox coords: [TABLE_IMAGE x=0.05 y=0.32 w=0.90 h=0.28] etc
+    const bboxMatch = text.trim().match(/^\[(TABLE_IMAGE|DIAGRAM)(?:\s+x=([\d.]+)\s+y=([\d.]+)\s+w=([\d.]+)\s+h=([\d.]+))?\s*\]$/i);
+    if (bboxMatch) {
+      const isTbl = bboxMatch[1].toUpperCase() === 'TABLE_IMAGE';
+      if (bboxMatch[2]) {
+        tags.bbox = {
+          x: parseFloat(bboxMatch[2]),
+          y: parseFloat(bboxMatch[3]),
+          w: parseFloat(bboxMatch[4]),
+          h: parseFloat(bboxMatch[5]),
+        };
+      }
+      return { text: '', ...tags, isTableImage: isTbl, isDiagram: !isTbl };
+    }
     if (text.trim() === '[/TABLE_IMAGE]') return { text: '', ...tags, isTableImage: true };
-    if (text.trim() === '[DIAGRAM]') return { text: '', ...tags, isDiagram: true };
     if (text.trim() === '[/DIAGRAM]') return { text: '', ...tags, isDiagram: true };
 
     // Extract right-aligned portion from same line
