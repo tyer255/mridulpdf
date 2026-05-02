@@ -16,23 +16,33 @@ const SplashScreen = () => {
       return;
     }
 
+    // Hard fail-safe: never let the splash block the app for more than 3.5s.
+    const failSafe = setTimeout(() => {
+      sessionStorage.setItem('splashShown', 'true');
+      navigate('/landing', { replace: true });
+    }, 3500);
+
     const video = videoRef.current;
     if (video) {
-      // Wait for video to be ready before playing
-      video.addEventListener('canplaythrough', () => {
+      const startPlayback = () => {
         setIsReady(true);
         const playPromise = video.play();
         if (playPromise !== undefined) {
           playPromise.catch(() => {
             sessionStorage.setItem('splashShown', 'true');
-            navigate('/home', { replace: true });
+            navigate('/landing', { replace: true });
           });
         }
-      });
+      };
+      // Start as soon as we have *some* data, not full canplaythrough.
+      video.addEventListener('loadeddata', startPlayback, { once: true });
+      video.addEventListener('canplay', startPlayback, { once: true });
 
       // Preload video
       video.load();
     }
+
+    return () => clearTimeout(failSafe);
   }, [navigate]);
 
   const handleVideoEnd = () => {
