@@ -139,14 +139,36 @@ LANGUAGE SUPPORT (CRITICAL)
 ═══════════════════════════════════════════════════════════════════════════════
 MATHEMATICAL CONTENT (IMPORTANT)
 ═══════════════════════════════════════════════════════════════════════════════
-- Accurately detect and reproduce ALL mathematical symbols and expressions.
+- Accurately detect and reproduce ALL mathematical symbols and expressions using
+  REAL UNICODE characters — never raw LaTeX commands like \\frac, \\sqrt, \\alpha, ^{}, _{}.
 - Symbols: α β γ δ Δ θ λ μ π σ Σ Ω ∫ ∑ √ ∞ ± ≤ ≥ ≠ ≈ ∝ ∈ ∉ ⊂ ⊃ ∪ ∩
 - Arrows: → ← ⇌ ↔ ⇒ ⇐
-- Subscripts: ₀₁₂₃₄₅₆₇₈₉ₐₑₒₓ
-- Superscripts: ⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻ⁿ
+- Subscripts: ₀₁₂₃₄₅₆₇₈₉ₐₑₒₓ — use these for chemical/physics subscripts.
+- Superscripts: ⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻ⁿ — use these for powers/exponents.
 - Chemical formulas: H₂O, H₂SO₄, NaOH, CO₂, K₂Cr₂O₇
-- Fractions: ½ ⅓ ¼ ⅔ ¾ or use a/b format
-- Do NOT skip or simplify any equation. Reproduce exactly.
+- Fractions: prefer ½ ⅓ ¼ ⅔ ¾ when matching, otherwise write a/b on one line.
+- Display equations (the ones that sit on their OWN line in the original) MUST be
+  output on their OWN line, prefixed with the [MATH] tag, e.g.
+    [MATH] F = m × a
+    [MATH] यांत्रिक लाभ (M.A.) = W / P
+- Inline math inside a sentence stays inline — no [MATH] tag for those.
+- Do NOT skip, simplify, romanize, or "approximate" any equation.
+- If a symbol is unclear, output [unclear] — never guess wrong characters.
+
+═══════════════════════════════════════════════════════════════════════════════
+LISTS, BULLETS & NUMBERED ITEMS (CRITICAL — DO NOT MERGE)
+═══════════════════════════════════════════════════════════════════════════════
+Numbered lists ("1.", "2.", "3.", "1)", "(i)", "(ii)", "क)", "१.", "२.") and
+bulleted lines (•, –, —, *, ●, ○, ▪) MUST each go on their OWN line.
+- NEVER merge multiple numbered points into one paragraph, even if they look short.
+- This applies to sections like Method / Procedure / Steps / Precautions / Observations
+  / प्रक्रिया / सावधानियाँ / विधि / उद्देश्य.
+- A line that BEGINS with a number-and-dot (e.g. "1.", "2.", "10."), a number-and-paren
+  ("1)", "2)"), a roman numeral in parens ("(i)", "(ii)"), a Devanagari numeral
+  ("१.", "२."), or a bullet glyph IS a list item — keep it on its own line.
+- A multi-line list item should be joined into ONE line per item (wrap text from the
+  same item together), but DIFFERENT items always stay on separate lines.
+- Preserve the original numbering exactly — never renumber or skip.
 
 ═══════════════════════════════════════════════════════════════════════════════
 TABLE HANDLING — STRICT HYBRID MODE (HIGHEST PRIORITY)
@@ -266,10 +288,14 @@ PARAGRAPH STRUCTURE (IMPORTANT FOR FULL-WIDTH LAYOUT)
 - Do NOT break paragraphs into short lines matching the original image width.
 - Only use line breaks for:
   - New paragraphs (separated by blank lines in original)
-  - Headings, list items, or numbered questions
+  - Headings (H1/H2/H3)
+  - List items, bullets, numbered points (each on its OWN line — see LIST rules above)
+  - Display math equations ([MATH] lines)
   - Table/diagram markers
   - Structural elements
 - This ensures text fills the full page width in the PDF.
+- Preserve vertical spacing: where the original has a clear blank line between
+  paragraphs/sections, output a [SPACE] tag on its own line. Do NOT omit section breaks.
 
 ═══════════════════════════════════════════════════════════════════════════════
 CHARACTER PRECISION
@@ -301,7 +327,7 @@ Return ONLY the formatted text with layout tags, nothing else.`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-2.5-pro',
         messages: [
           { role: 'system', content: systemPrompt },
           {
@@ -309,7 +335,7 @@ Return ONLY the formatted text with layout tags, nothing else.`;
             content: [
               {
                 type: 'text',
-                text: 'Extract ALL text using STRICT HYBRID MODE with structure-based detection. For ANY table that is complex (merged cells, multi-line cells, long-text columns like addresses, mixed alignment, handwritten, Hindi) → output [TABLE_IMAGE x=.. y=.. w=.. h=..] with TIGHT normalized bbox (0-1, 3 decimals). For diagrams/charts/drawings/figures → [DIAGRAM x=.. y=.. w=.. h=..] with TIGHT normalized bbox. Do NOT include extra whitespace margins in the bbox; do NOT clip content. For plain text: merge wrapped lines into full-width paragraphs, proper Devanagari Unicode for Hindi. Use layout tags ([CENTER], [RIGHT], [H1]-[H3], [BOLD], [LINE], [SPACE], [INDENT], [HEADER], [FOOTER], [SMALL]). Preserve top-to-bottom flow exactly. NEVER mix table content with paragraph text.'
+                text: 'Extract ALL text using STRICT HYBRID MODE with structure-based detection. CRITICAL: (a) Hindi must be perfect Devanagari Unicode — read each akshara/matra carefully, never romanize or guess. (b) Numbered/bulleted list items each go on their OWN line, never merged. (c) Display math equations on their own line prefixed with [MATH]; use real Unicode symbols, never raw LaTeX. (d) Preserve blank-line section breaks with [SPACE]. For ANY table that is complex (merged cells, multi-line cells, long-text columns like addresses, mixed alignment, handwritten, Hindi) → output [TABLE_IMAGE x=.. y=.. w=.. h=..] with TIGHT normalized bbox (0-1, 3 decimals). For diagrams/charts/drawings/figures/circuits → [DIAGRAM x=.. y=.. w=.. h=..] with TIGHT normalized bbox. Do NOT include extra whitespace margins in the bbox; do NOT clip content. For plain text: merge wrapped lines of the SAME paragraph into full-width paragraphs. Use layout tags ([CENTER], [RIGHT], [H1]-[H3], [BOLD], [MATH], [LINE], [SPACE], [INDENT], [HEADER], [FOOTER], [SMALL]). Preserve top-to-bottom flow exactly. NEVER mix table content with paragraph text.'
               },
               {
                 type: 'image_url',
@@ -318,7 +344,7 @@ Return ONLY the formatted text with layout tags, nothing else.`;
             ]
           }
         ],
-        max_tokens: 4096,
+        max_tokens: 8192,
       }),
     });
 
