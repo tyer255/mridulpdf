@@ -514,6 +514,26 @@ const HandwritingOCR = () => {
     const merged: string[] = [];
     let paragraphBuffer = '';
 
+    // Detect numbered list items, bullets, roman/devanagari numerals, etc.
+    // Each list item must remain on its own line.
+    const isListItem = (t: string): boolean => {
+      if (!t) return false;
+      // Bullet glyphs
+      if (/^[•●○◦▪■◆\-–—*]\s+\S/.test(t)) return true;
+      // 1.  2.  10.   1)  10)
+      if (/^\d{1,3}[.)]\s+\S/.test(t)) return true;
+      // (i) (ii) (iii)  i.  ii.
+      if (/^\(?[ivxIVX]{1,4}\)\s+\S/.test(t)) return true;
+      if (/^[ivxIVX]{1,4}[.)]\s+\S/.test(t)) return true;
+      // Devanagari numerals: १. २. १०.
+      if (/^[०-९]{1,3}[.)]\s*\S/.test(t)) return true;
+      // Devanagari letter markers: क)  ख)  क.  ख.
+      if (/^[क-ह]{1,2}[.)]\s+\S/.test(t)) return true;
+      // English single-letter markers: a) b) A. B.
+      if (/^[a-zA-Z][.)]\s+\S/.test(t) && t.length < 80) return true;
+      return false;
+    };
+
     const isSpecialLine = (line: string): boolean => {
       const t = line.trim();
       return (
