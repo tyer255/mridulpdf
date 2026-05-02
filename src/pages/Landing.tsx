@@ -2,10 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { lovable } from '@/integrations/lovable';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
-import { Eye, EyeOff, X, Mail, Lock, FileText, File, Image, Sparkles, User } from 'lucide-react';
+import { Eye, EyeOff, X, Mail, Lock, FileText, File, Image, Sparkles, User, AlertTriangle } from 'lucide-react';
 
 const USER_ID_KEY = 'anonymous_user_id';
 const USER_NAME_KEY = 'user_display_name';
@@ -21,7 +20,6 @@ const Landing = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
   const [mainVisible, setMainVisible] = useState(false);
 
@@ -35,21 +33,12 @@ const Landing = () => {
     setTimeout(() => setMainVisible(true), 100);
   }, []);
 
-  const handleGoogleLogin = async () => {
-    setGoogleLoading(true);
-    try {
-      const { error } = await lovable.auth.signInWithOAuth('google', {
-        redirect_uri: `${window.location.origin}/home`,
-        extraParams: {
-          prompt: 'select_account',
-        },
-      });
-      if (error) toast({ title: "Login Error", description: error.message, variant: "destructive" });
-    } catch {
-      toast({ title: "Error", description: "Failed to initiate Google login", variant: "destructive" });
-    } finally {
-      setGoogleLoading(false);
-    }
+  const handleGoogleLogin = () => {
+    toast({
+      title: "Google Login Currently Not Supported",
+      description: "Please use Email or Guest login/signup instead.",
+      variant: "destructive",
+    });
   };
 
   const handleEmailLogin = async (e?: React.FormEvent) => {
@@ -282,15 +271,11 @@ const Landing = () => {
           {/* Google Login */}
           <button
             onClick={handleGoogleLogin}
-            disabled={googleLoading}
-            className="w-full flex items-center justify-center gap-3 bg-white text-gray-900 py-3.5 px-4 rounded-xl font-semibold hover:bg-gray-100 transition-all hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] active:scale-[0.98] disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-3 bg-white/60 text-gray-700 py-3.5 px-4 rounded-xl font-semibold cursor-not-allowed opacity-60 active:scale-[0.98]"
+            title="Google login is currently unavailable"
           >
-            <img
-              src="https://www.svgrepo.com/show/475656/google-color.svg"
-              className="w-5 h-5"
-              alt="Google Logo"
-            />
-            {googleLoading ? 'Connecting...' : 'Continue with Google'}
+            <AlertTriangle className="w-5 h-5 text-amber-600" />
+            Google (Currently Unavailable)
           </button>
 
           {/* Divider */}
