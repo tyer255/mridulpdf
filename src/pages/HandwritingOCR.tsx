@@ -537,7 +537,13 @@ const HandwritingOCR = () => {
         t.startsWith('[FOOTER]') ||
         t.startsWith('[CENTER]') ||
         t.startsWith('[RIGHT]') ||
-        t.includes('[RIGHT]') // mixed left+right line
+        t.includes('[RIGHT]') || // mixed left+right line
+        t.startsWith('[MATH]') || // display math equation
+        t.startsWith('[BOLD]') ||
+        t.startsWith('[SMALL]') ||
+        t.startsWith('[INDENT]') ||
+        // List items / bullets must NEVER be merged with surrounding text
+        isListItem(t)
       );
     };
 
