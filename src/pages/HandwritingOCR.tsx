@@ -231,7 +231,7 @@ const HandwritingOCR = () => {
 
   const postProcessOCRText = (text: string): string => {
     const listBreakers = [
-      /\s+(?=(?:\d{1,3}|[०-९]{1,3})[.)]\s+\S)/g,
+      /\s+(?=(?:\d{1,3}|[०-९]{1,3})[.)]\s*(?!\d)\S)/g,
       /\s+(?=\(?[ivxIVX]{1,4}\)\s+\S)/g,
       /\s+(?=[क-ह]{1,2}[.)]\s+\S)/g,
       /\s+(?=[•●○◦▪■◆\-–—*]\s+\S)/g,
@@ -531,16 +531,16 @@ const HandwritingOCR = () => {
       // Bullet glyphs
       if (/^[•●○◦▪■◆\-–—*]\s+\S/.test(t)) return true;
       // 1.  2.  10.   1)  10)
-      if (/^\d{1,3}[.)]\s+\S/.test(t)) return true;
+      if (/^\d{1,3}[.)]\s*(?!\d)\S/.test(t)) return true;
       // (i) (ii) (iii)  i.  ii.
       if (/^\(?[ivxIVX]{1,4}\)\s+\S/.test(t)) return true;
       if (/^[ivxIVX]{1,4}[.)]\s+\S/.test(t)) return true;
       // Devanagari numerals: १. २. १०.
       if (/^[०-९]{1,3}[.)]\s*\S/.test(t)) return true;
       // Devanagari letter markers: क)  ख)  क.  ख.
-      if (/^[क-ह]{1,2}[.)]\s+\S/.test(t)) return true;
+      if (/^[क-ह]{1,2}[.)]\s*\S/.test(t)) return true;
       // English single-letter markers: a) b) A. B.
-      if (/^[a-zA-Z][.)]\s+\S/.test(t) && t.length < 80) return true;
+      if (/^[a-zA-Z][.)]\s*\S/.test(t) && t.length < 80) return true;
       return false;
     };
 
