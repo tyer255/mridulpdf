@@ -192,7 +192,7 @@ const HandwritingOCR = () => {
     });
   };
 
-  // Preprocess image for better OCR (resize + grayscale + binarize)
+  // Preprocess image for OCR speed: resize only, no expensive pixel loops.
   // NOTE: Keep this lightweight to avoid UI lag on low-end devices.
   const preprocessImage = async (imageUrl: string): Promise<string> => {
     try {
@@ -205,7 +205,7 @@ const HandwritingOCR = () => {
       const bitmap = await createImageBitmap(blob);
 
       // Downscale large images to reduce payload, but keep enough detail for OCR
-      const maxDim = 2000;
+      const maxDim = 1650;
       const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
       const w = Math.max(1, Math.round(bitmap.width * scale));
       const h = Math.max(1, Math.round(bitmap.height * scale));
@@ -214,31 +214,47 @@ const HandwritingOCR = () => {
       canvas.width = w;
       canvas.height = h;
 
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      const ctx = canvas.getContext('2d');
       if (!ctx) return imageUrl;
 
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(bitmap, 0, 0, w, h);
 
-      // Light enhancement only - NO binarization (destroys detail for OCR)
-      const imageData = ctx.getImageData(0, 0, w, h);
-      const data = imageData.data;
-
-      // Gentle contrast boost + slight shadow lift — preserve all tonal detail
-      for (let i = 0; i < data.length; i += 4) {
-        // Mild contrast (1.15x) to sharpen text edges without destroying gradients
-        data[i]     = Math.min(255, Math.max(0, (data[i]     - 128) * 1.15 + 128 + 8));
-        data[i + 1] = Math.min(255, Math.max(0, (data[i + 1] - 128) * 1.15 + 128 + 8));
-        data[i + 2] = Math.min(255, Math.max(0, (data[i + 2] - 128) * 1.15 + 128 + 8));
-      }
-
-      ctx.putImageData(imageData, 0, 0);
-
-      // High quality JPEG to preserve text detail
-      return canvas.toDataURL('image/jpeg', 0.92);
+      // Balanced quality: fast upload + readable OCR detail
+      return canvas.toDataURL('image/jpeg', 0.86);
     } catch (e) {
       console.warn('preprocessImage failed, using original image:', e);
       return imageUrl;
     }
+  };
+
+  const postProcessOCRText = (text: string): string => {
+    const listBreakers = [
+      /\s+(?=(?:\d{1,3}|[०-९]{1,3})[.)]\s*(?!\d)\S)/g,
+      /\s+(?=\(?[ivxIVX]{1,4}\)\s+\S)/g,
+      /\s+(?=[क-ह]{1,2}[.)]\s+\S)/g,
+      /\s+(?=[•●○◦▪■◆\-–—*]\s+\S)/g,
+    ];
+
+    return text
+      .split('\n')
+      .flatMap((line) => {
+        const trimmed = line.trim();
+        if (
+          trimmed.startsWith('[TABLE') ||
+          trimmed.startsWith('[/TABLE') ||
+          trimmed.startsWith('[DIAGRAM') ||
+          trimmed.startsWith('[/DIAGRAM')
+        ) {
+          return [line];
+        }
+
+        let fixed = line;
+        for (const breaker of listBreakers) fixed = fixed.replace(breaker, '\n');
+        return fixed.split('\n').map((part) => part.trim()).filter(Boolean);
+      })
+      .join('\n');
   };
 
 
@@ -248,24 +264,24 @@ const HandwritingOCR = () => {
     onProgress: (progress: number, message: string) => void
   ): Promise<{ success: boolean; text: string }> => {
     try {
-      // Phase 1: Preprocessing (0-20%)
+      // Phase 1: Preprocessing (0-12%)
       onProgress(0, 'Preparing image...');
-      onProgress(5, 'Denoising scan...');
+      onProgress(4, 'Optimizing image...');
       
       const processedImage = await preprocessImage(imageUrl);
       
-      onProgress(15, 'Sharpening edges...');
+      onProgress(12, 'Image ready...');
 
-      // Phase 2: OCR Processing (20-90%) with gradual simulation
-      onProgress(20, 'Extracting text...');
+      // Phase 2: OCR Processing (12-90%) with gradual simulation
+      onProgress(16, 'Extracting text...');
       
       // Simulate gradual progress during API call
-      let simProgress = 20;
+      let simProgress = 16;
       const progressInterval = setInterval(() => {
-        simProgress += Math.random() * 8 + 2;
+        simProgress += Math.random() * 6 + 3;
         if (simProgress > 85) simProgress = 85;
         onProgress(Math.round(simProgress), simProgress < 50 ? 'Analyzing layout...' : simProgress < 70 ? 'Recognizing characters...' : 'Processing tables...');
-      }, 800);
+      }, 600);
 
       const { data, error } = await supabase.functions.invoke('ocr-handwriting', {
         body: { image: processedImage },
@@ -281,7 +297,7 @@ const HandwritingOCR = () => {
       onProgress(92, 'Formatting output...');
       onProgress(100, 'Complete');
 
-      return { success: true, text: data.text || '' };
+      return { success: true, text: postProcessOCRText(data.text || '') };
     } catch (error) {
       console.error('OCR Error:', error);
       return { success: false, text: '' };
@@ -309,50 +325,44 @@ const HandwritingOCR = () => {
     });
 
     speak("Starting scan");
-    const results: ExtractedPage[] = [];
-    
-    for (let i = 0; i < images.length; i++) {
-      if (scanAbortRef.current) break;
+    const results: (ExtractedPage | null)[] = new Array(images.length).fill(null);
+    const pageProgress = new Array(images.length).fill(0);
+    let completed = 0;
+    let nextIndex = 0;
+    const concurrency = images.length > 1 ? 2 : 1;
 
-      const pageNum = i + 1;
-      setIsTransitioning(false);
-      
-      // Reset for new page
+    const updateOverallProgress = (activePage: number, progress: number, message: string) => {
+      pageProgress[activePage - 1] = progress;
+      const overall = Math.round(pageProgress.reduce((sum, val) => sum + val, 0) / images.length);
       setScanStatus(prev => ({
         ...prev,
-        currentPage: pageNum,
-        progress: 0,
-        message: `Scanning Page ${pageNum}...`,
+        currentPage: Math.min(completed + 1, images.length),
+        progress: overall,
+        message: images.length > 1 ? `${completed}/${images.length} done • Page ${activePage}: ${message}` : message,
         isProcessing: true
       }));
+    };
 
-      // Process with progress updates (faster animation)
-      const result = await processOCR(images[i], (progress, message) => {
-        setScanStatus(prev => ({
-          ...prev,
-          progress,
-          message
-        }));
+    const runNext = async (): Promise<void> => {
+      if (scanAbortRef.current) return;
+      const index = nextIndex++;
+      if (index >= images.length) return;
+
+      const pageNum = index + 1;
+      updateOverallProgress(pageNum, 0, `Scanning Page ${pageNum}...`);
+      const result = await processOCR(images[index], (progress, message) => {
+        if (!scanAbortRef.current) updateOverallProgress(pageNum, progress, message);
       });
 
       if (result.success) {
-        results.push({ imageUrl: images[i], text: result.text });
-        speak(`Page ${pageNum} done${i < images.length - 1 ? `. Scanning Page ${pageNum + 1}` : ''}`);
-        
-        // Show completion message
-        setScanStatus(prev => ({
-          ...prev,
-          progress: 100,
-          message: `Page ${pageNum} completed.${i < images.length - 1 ? ` Scanning Page ${pageNum + 1}...` : ''}`
-        }));
+        results[index] = { imageUrl: images[index], text: result.text };
+        pageProgress[index] = 100;
+        completed++;
+        speak(`Page ${pageNum} done`);
       } else {
-        // Handle failed page
+        pageProgress[index] = 100;
+        completed++;
         speak(`Skipped Page ${pageNum} due to unreadable content`);
-        setScanStatus(prev => ({
-          ...prev,
-          progress: 100,
-          message: `Skipped Page ${pageNum} due to unreadable content.`
-        }));
         toast({ 
           title: "Page Skipped", 
           description: `Page ${pageNum} could not be read`,
@@ -360,14 +370,14 @@ const HandwritingOCR = () => {
         });
       }
 
-      // Transition to next page (reduced delay)
-      if (i < images.length - 1) {
-        setIsTransitioning(true);
-        await new Promise(r => setTimeout(r, 200));
-      }
-    }
+      updateOverallProgress(pageNum, 100, `Page ${pageNum} completed`);
+      await runNext();
+    };
 
-    setExtractedPages(results);
+    setIsTransitioning(false);
+    await Promise.all(Array.from({ length: Math.min(concurrency, images.length) }, () => runNext()));
+
+    setExtractedPages(results.filter((page): page is ExtractedPage => Boolean(page)));
     
     // Final message
     setScanStatus(prev => ({
@@ -521,16 +531,16 @@ const HandwritingOCR = () => {
       // Bullet glyphs
       if (/^[•●○◦▪■◆\-–—*]\s+\S/.test(t)) return true;
       // 1.  2.  10.   1)  10)
-      if (/^\d{1,3}[.)]\s+\S/.test(t)) return true;
+      if (/^\d{1,3}[.)]\s*(?!\d)\S/.test(t)) return true;
       // (i) (ii) (iii)  i.  ii.
       if (/^\(?[ivxIVX]{1,4}\)\s+\S/.test(t)) return true;
       if (/^[ivxIVX]{1,4}[.)]\s+\S/.test(t)) return true;
       // Devanagari numerals: १. २. १०.
       if (/^[०-९]{1,3}[.)]\s*\S/.test(t)) return true;
       // Devanagari letter markers: क)  ख)  क.  ख.
-      if (/^[क-ह]{1,2}[.)]\s+\S/.test(t)) return true;
+      if (/^[क-ह]{1,2}[.)]\s*\S/.test(t)) return true;
       // English single-letter markers: a) b) A. B.
-      if (/^[a-zA-Z][.)]\s+\S/.test(t) && t.length < 80) return true;
+      if (/^[a-zA-Z][.)]\s*\S/.test(t) && t.length < 80) return true;
       return false;
     };
 
@@ -1141,6 +1151,12 @@ const HandwritingOCR = () => {
                   imgW = imgH * cropAspect;
                 }
                 const imgX = leftMargin + (maxWidth - imgW) / 2;
+
+                // Keep visuals close to their real notebook/page position when coordinates are available.
+                if (pendingBbox) {
+                  const anchoredY = Math.max(topMargin, pendingBbox.y * canvas.height);
+                  if (anchoredY > y && anchoredY - y < canvas.height * 0.28) y = anchoredY;
+                }
 
                 // Draw the SOURCE region (sx,sy,sW,sH) into the destination
                 ctx.drawImage(img, sx, sy, sW, sH, imgX, y, imgW, imgH);
