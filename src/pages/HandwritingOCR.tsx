@@ -236,24 +236,24 @@ const HandwritingOCR = () => {
     onProgress: (progress: number, message: string) => void
   ): Promise<{ success: boolean; text: string }> => {
     try {
-      // Phase 1: Preprocessing (0-20%)
+      // Phase 1: Preprocessing (0-12%)
       onProgress(0, 'Preparing image...');
-      onProgress(5, 'Denoising scan...');
+      onProgress(4, 'Optimizing image...');
       
       const processedImage = await preprocessImage(imageUrl);
       
-      onProgress(15, 'Sharpening edges...');
+      onProgress(12, 'Image ready...');
 
-      // Phase 2: OCR Processing (20-90%) with gradual simulation
-      onProgress(20, 'Extracting text...');
+      // Phase 2: OCR Processing (12-90%) with gradual simulation
+      onProgress(16, 'Extracting text...');
       
       // Simulate gradual progress during API call
-      let simProgress = 20;
+      let simProgress = 16;
       const progressInterval = setInterval(() => {
-        simProgress += Math.random() * 8 + 2;
+        simProgress += Math.random() * 6 + 3;
         if (simProgress > 85) simProgress = 85;
         onProgress(Math.round(simProgress), simProgress < 50 ? 'Analyzing layout...' : simProgress < 70 ? 'Recognizing characters...' : 'Processing tables...');
-      }, 800);
+      }, 600);
 
       const { data, error } = await supabase.functions.invoke('ocr-handwriting', {
         body: { image: processedImage },
@@ -269,7 +269,7 @@ const HandwritingOCR = () => {
       onProgress(92, 'Formatting output...');
       onProgress(100, 'Complete');
 
-      return { success: true, text: data.text || '' };
+      return { success: true, text: postProcessOCRText(data.text || '') };
     } catch (error) {
       console.error('OCR Error:', error);
       return { success: false, text: '' };
