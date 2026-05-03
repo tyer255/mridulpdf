@@ -325,50 +325,44 @@ const HandwritingOCR = () => {
     });
 
     speak("Starting scan");
-    const results: ExtractedPage[] = [];
-    
-    for (let i = 0; i < images.length; i++) {
-      if (scanAbortRef.current) break;
+    const results: (ExtractedPage | null)[] = new Array(images.length).fill(null);
+    const pageProgress = new Array(images.length).fill(0);
+    let completed = 0;
+    let nextIndex = 0;
+    const concurrency = images.length > 1 ? 2 : 1;
 
-      const pageNum = i + 1;
-      setIsTransitioning(false);
-      
-      // Reset for new page
+    const updateOverallProgress = (activePage: number, progress: number, message: string) => {
+      pageProgress[activePage - 1] = progress;
+      const overall = Math.round(pageProgress.reduce((sum, val) => sum + val, 0) / images.length);
       setScanStatus(prev => ({
         ...prev,
-        currentPage: pageNum,
-        progress: 0,
-        message: `Scanning Page ${pageNum}...`,
+        currentPage: Math.min(completed + 1, images.length),
+        progress: overall,
+        message: images.length > 1 ? `${completed}/${images.length} done • Page ${activePage}: ${message}` : message,
         isProcessing: true
       }));
+    };
 
-      // Process with progress updates (faster animation)
-      const result = await processOCR(images[i], (progress, message) => {
-        setScanStatus(prev => ({
-          ...prev,
-          progress,
-          message
-        }));
+    const runNext = async (): Promise<void> => {
+      if (scanAbortRef.current) return;
+      const index = nextIndex++;
+      if (index >= images.length) return;
+
+      const pageNum = index + 1;
+      updateOverallProgress(pageNum, 0, `Scanning Page ${pageNum}...`);
+      const result = await processOCR(images[index], (progress, message) => {
+        if (!scanAbortRef.current) updateOverallProgress(pageNum, progress, message);
       });
 
       if (result.success) {
-        results.push({ imageUrl: images[i], text: result.text });
-        speak(`Page ${pageNum} done${i < images.length - 1 ? `. Scanning Page ${pageNum + 1}` : ''}`);
-        
-        // Show completion message
-        setScanStatus(prev => ({
-          ...prev,
-          progress: 100,
-          message: `Page ${pageNum} completed.${i < images.length - 1 ? ` Scanning Page ${pageNum + 1}...` : ''}`
-        }));
+        results[index] = { imageUrl: images[index], text: result.text };
+        pageProgress[index] = 100;
+        completed++;
+        speak(`Page ${pageNum} done`);
       } else {
-        // Handle failed page
+        pageProgress[index] = 100;
+        completed++;
         speak(`Skipped Page ${pageNum} due to unreadable content`);
-        setScanStatus(prev => ({
-          ...prev,
-          progress: 100,
-          message: `Skipped Page ${pageNum} due to unreadable content.`
-        }));
         toast({ 
           title: "Page Skipped", 
           description: `Page ${pageNum} could not be read`,
@@ -376,14 +370,14 @@ const HandwritingOCR = () => {
         });
       }
 
-      // Transition to next page (reduced delay)
-      if (i < images.length - 1) {
-        setIsTransitioning(true);
-        await new Promise(r => setTimeout(r, 200));
-      }
-    }
+      updateOverallProgress(pageNum, 100, `Page ${pageNum} completed`);
+      await runNext();
+    };
 
-    setExtractedPages(results);
+    setIsTransitioning(false);
+    await Promise.all(Array.from({ length: Math.min(concurrency, images.length) }, () => runNext()));
+
+    setExtractedPages(results.filter((page): page is ExtractedPage => Boolean(page)));
     
     // Final message
     setScanStatus(prev => ({
