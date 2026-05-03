@@ -1152,6 +1152,12 @@ const HandwritingOCR = () => {
                 }
                 const imgX = leftMargin + (maxWidth - imgW) / 2;
 
+                // Keep visuals close to their real notebook/page position when coordinates are available.
+                if (pendingBbox) {
+                  const anchoredY = Math.max(topMargin, pendingBbox.y * canvas.height);
+                  if (anchoredY > y && anchoredY - y < canvas.height * 0.28) y = anchoredY;
+                }
+
                 // Draw the SOURCE region (sx,sy,sW,sH) into the destination
                 ctx.drawImage(img, sx, sy, sW, sH, imgX, y, imgW, imgH);
                 y += imgH + 10 * scale;
