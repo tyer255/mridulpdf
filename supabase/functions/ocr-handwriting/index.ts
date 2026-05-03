@@ -151,7 +151,7 @@ Return ONLY formatted text with tags. No explanations.`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-pro',
+        model: 'google/gemini-3-flash-preview',
         messages: [
           { role: 'system', content: systemPrompt },
           {
@@ -159,7 +159,7 @@ Return ONLY formatted text with tags. No explanations.`;
             content: [
               {
                 type: 'text',
-                text: 'Extract ALL text using STRICT HYBRID MODE with structure-based detection. CRITICAL: (a) Hindi must be perfect Devanagari Unicode — read each akshara/matra carefully, never romanize or guess. (b) Numbered/bulleted list items each go on their OWN line, never merged. (c) Display math equations on their own line prefixed with [MATH]; use real Unicode symbols, never raw LaTeX. (d) Preserve blank-line section breaks with [SPACE]. For ANY table that is complex (merged cells, multi-line cells, long-text columns like addresses, mixed alignment, handwritten, Hindi) → output [TABLE_IMAGE x=.. y=.. w=.. h=..] with TIGHT normalized bbox (0-1, 3 decimals). For diagrams/charts/drawings/figures/circuits → [DIAGRAM x=.. y=.. w=.. h=..] with TIGHT normalized bbox. Do NOT include extra whitespace margins in the bbox; do NOT clip content. For plain text: merge wrapped lines of the SAME paragraph into full-width paragraphs. Use layout tags ([CENTER], [RIGHT], [H1]-[H3], [BOLD], [MATH], [LINE], [SPACE], [INDENT], [HEADER], [FOOTER], [SMALL]). Preserve top-to-bottom flow exactly. NEVER mix table content with paragraph text.'
+                text: 'Fast OCR this page. Preserve Hindi Devanagari, formulas, and notebook layout. CRITICAL: each numbered/bulleted point must be a separate line. Use [TABLE_IMAGE x=.. y=.. w=.. h=..] for complex/Hindi/handwritten tables and [DIAGRAM x=.. y=.. w=.. h=..] for figures; coordinates normalized with 3 decimals, no clipping. Keep tags in exact top-to-bottom position. Return only tagged text.'
               },
               {
                 type: 'image_url',
@@ -168,7 +168,7 @@ Return ONLY formatted text with tags. No explanations.`;
             ]
           }
         ],
-        max_tokens: 8192,
+        max_tokens: 4096,
       }),
     });
 
