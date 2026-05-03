@@ -229,6 +229,34 @@ const HandwritingOCR = () => {
     }
   };
 
+  const postProcessOCRText = (text: string): string => {
+    const listBreakers = [
+      /\s+(?=(?:\d{1,3}|[०-९]{1,3})[.)]\s+\S)/g,
+      /\s+(?=\(?[ivxIVX]{1,4}\)\s+\S)/g,
+      /\s+(?=[क-ह]{1,2}[.)]\s+\S)/g,
+      /\s+(?=[•●○◦▪■◆\-–—*]\s+\S)/g,
+    ];
+
+    return text
+      .split('\n')
+      .flatMap((line) => {
+        const trimmed = line.trim();
+        if (
+          trimmed.startsWith('[TABLE') ||
+          trimmed.startsWith('[/TABLE') ||
+          trimmed.startsWith('[DIAGRAM') ||
+          trimmed.startsWith('[/DIAGRAM')
+        ) {
+          return [line];
+        }
+
+        let fixed = line;
+        for (const breaker of listBreakers) fixed = fixed.replace(breaker, '\n');
+        return fixed.split('\n').map((part) => part.trim()).filter(Boolean);
+      })
+      .join('\n');
+  };
+
 
   // Process OCR with Lovable AI - returns progress updates (optimized for speed)
   const processOCR = async (
