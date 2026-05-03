@@ -192,7 +192,7 @@ const HandwritingOCR = () => {
     });
   };
 
-  // Preprocess image for better OCR (resize + grayscale + binarize)
+  // Preprocess image for OCR speed: resize only, no expensive pixel loops.
   // NOTE: Keep this lightweight to avoid UI lag on low-end devices.
   const preprocessImage = async (imageUrl: string): Promise<string> => {
     try {
@@ -205,7 +205,7 @@ const HandwritingOCR = () => {
       const bitmap = await createImageBitmap(blob);
 
       // Downscale large images to reduce payload, but keep enough detail for OCR
-      const maxDim = 2000;
+      const maxDim = 1650;
       const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
       const w = Math.max(1, Math.round(bitmap.width * scale));
       const h = Math.max(1, Math.round(bitmap.height * scale));
@@ -214,27 +214,15 @@ const HandwritingOCR = () => {
       canvas.width = w;
       canvas.height = h;
 
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      const ctx = canvas.getContext('2d');
       if (!ctx) return imageUrl;
 
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(bitmap, 0, 0, w, h);
 
-      // Light enhancement only - NO binarization (destroys detail for OCR)
-      const imageData = ctx.getImageData(0, 0, w, h);
-      const data = imageData.data;
-
-      // Gentle contrast boost + slight shadow lift — preserve all tonal detail
-      for (let i = 0; i < data.length; i += 4) {
-        // Mild contrast (1.15x) to sharpen text edges without destroying gradients
-        data[i]     = Math.min(255, Math.max(0, (data[i]     - 128) * 1.15 + 128 + 8));
-        data[i + 1] = Math.min(255, Math.max(0, (data[i + 1] - 128) * 1.15 + 128 + 8));
-        data[i + 2] = Math.min(255, Math.max(0, (data[i + 2] - 128) * 1.15 + 128 + 8));
-      }
-
-      ctx.putImageData(imageData, 0, 0);
-
-      // High quality JPEG to preserve text detail
-      return canvas.toDataURL('image/jpeg', 0.92);
+      // Balanced quality: fast upload + readable OCR detail
+      return canvas.toDataURL('image/jpeg', 0.86);
     } catch (e) {
       console.warn('preprocessImage failed, using original image:', e);
       return imageUrl;
