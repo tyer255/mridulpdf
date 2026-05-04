@@ -14,7 +14,9 @@ import ImageEnhancer from '@/components/ImageEnhancer';
 import { generateThumbnail, prepareImageForPdf } from '@/lib/imageProcessing';
 import ImageFilterModal from '@/components/ImageFilterModal';
 import heic2any from 'heic2any';
-import { alertEvent } from '@/lib/preferences';
+import { alertEvent, getWatermarkEnabled, setWatermarkEnabled } from '@/lib/preferences';
+import WatermarkToggle from '@/components/WatermarkToggle';
+import { applyWatermarkToPdf } from '@/lib/watermark';
 import ExitConfirmDialog from '@/components/ExitConfirmDialog';
 import FeedbackDialog from '@/components/FeedbackDialog';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,6 +30,7 @@ const CapturePDF = () => {
   const [visibility, setVisibility] = useState<'private' | 'world'>('private');
   const [tags, setTags] = useState<PDFTag[]>([]);
   const [addPageNumbers, setAddPageNumbers] = useState(false);
+  const [watermark, setWatermark] = useState<boolean>(getWatermarkEnabled());
   const [uploading, setUploading] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -198,6 +201,7 @@ const CapturePDF = () => {
           pdf.text(`Page ${i + 1} of ${totalPages}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
         }
       }
+      await applyWatermarkToPdf(pdf, watermark);
       const pdfBlob = pdf.output('blob');
       const pdfDataUrl = pdf.output('dataurlstring');
       const thumbnailUrl = await generateThumbnail(images[0]);
