@@ -11,6 +11,9 @@ import { useAuth } from '@/contexts/AuthContext';
 
 import { useToast } from '@/hooks/use-toast';
 import { PDFTag } from '@/types/pdf';
+import WatermarkToggle from '@/components/WatermarkToggle';
+import { applyWatermarkToPdf } from '@/lib/watermark';
+import { getWatermarkEnabled, setWatermarkEnabled } from '@/lib/preferences';
 
 const TextToPDF = () => {
   const navigate = useNavigate();
@@ -24,6 +27,7 @@ const TextToPDF = () => {
   const [tags, setTags] = useState<PDFTag[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [watermark, setWatermark] = useState<boolean>(getWatermarkEnabled());
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleOk = () => {
@@ -69,10 +73,20 @@ const TextToPDF = () => {
       }
 
       const pdfBlob = doc.output('blob');
+      // Watermark must be applied before generating the final blob/dataUrl below.
+      // We re-output after applying.
+    } catch (err: any) {
+      // (handled below)
+    }
+    // The above try is intentionally split; rewrite full flow below.
+    try {
+      const doc2 = doc;
+      await applyWatermarkToPdf(doc2, watermark);
+      const finalBlob = doc2.output('blob');
       const pdfDataUrl = await new Promise<string>((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(pdfBlob);
+        reader.readAsDataURL(finalBlob);
       });
 
       const pdfName = text.trim().slice(0, 40).replace(/[^a-zA-Z0-9\s]/g, '') || 'Text PDF';
