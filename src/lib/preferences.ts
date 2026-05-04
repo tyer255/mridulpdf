@@ -9,6 +9,19 @@ const DEFAULT_PREFS: AppPreferences = {
   voiceType: 'female',
 };
 
+// Watermark preference (separate key for simplicity & backward compat)
+const WATERMARK_KEY = 'pdf_watermark_enabled';
+
+export const getWatermarkEnabled = (): boolean => {
+  const v = localStorage.getItem(WATERMARK_KEY);
+  if (v === null) return true; // ON by default
+  return v === 'true';
+};
+
+export const setWatermarkEnabled = (enabled: boolean) => {
+  localStorage.setItem(WATERMARK_KEY, String(enabled));
+};
+
 // Preload voices on module load for instant response
 let voicesLoaded = false;
 let cachedVoices: SpeechSynthesisVoice[] = [];
