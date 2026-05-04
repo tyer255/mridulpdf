@@ -1258,6 +1258,7 @@ const HandwritingOCR = () => {
         pdf.addImage(imgData, 'JPEG', margin, margin, contentWidth, contentHeight);
       }
 
+      await applyWatermarkToPdf(pdf, watermark);
       const pdfBlob = pdf.output('blob');
       const pdfDataUrl = await new Promise<string>((resolve) => {
         const reader = new FileReader();
