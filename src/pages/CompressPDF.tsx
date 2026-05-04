@@ -4,6 +4,9 @@ import { ArrowLeft, FileDown, Upload, Check, Loader2, FileText, Sparkles } from 
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
+import WatermarkToggle from '@/components/WatermarkToggle';
+import { applyWatermarkToPdf } from '@/lib/watermark';
+import { getWatermarkEnabled, setWatermarkEnabled } from '@/lib/preferences';
 
 interface CompressionResult {
   originalSize: number;
@@ -21,7 +24,8 @@ interface CompressionResult {
 const compressPDFReal = async (
   file: File,
   quality: number,
-  onProgress: (p: number) => void
+  onProgress: (p: number) => void,
+  watermark: boolean = false
 ): Promise<{ blob: Blob; compressedSize: number }> => {
   const { jsPDF } = await import('jspdf');
 
@@ -89,6 +93,7 @@ const compressPDFReal = async (
   }
 
   onProgress(95);
+  await applyWatermarkToPdf(newPdf, watermark);
   const blob = newPdf.output('blob');
   onProgress(100);
 
@@ -102,6 +107,7 @@ const CompressPDF = () => {
   const [isCompressing, setIsCompressing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<CompressionResult | null>(null);
+  const [watermark, setWatermark] = useState<boolean>(getWatermarkEnabled());
 
   const formatSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;
@@ -131,7 +137,8 @@ const CompressPDF = () => {
       const { blob, compressedSize } = await compressPDFReal(
         selectedFile,
         0.6, // JPEG quality 60% for good compression
-        (p) => setProgress(p)
+        (p) => setProgress(p),
+        watermark
       );
 
       const savings = Math.round((1 - compressedSize / selectedFile.size) * 100);
