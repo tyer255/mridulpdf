@@ -1626,6 +1626,11 @@ const HandwritingOCR = () => {
             )}
           </div>
 
+          <WatermarkToggle
+            enabled={watermark}
+            onChange={(v) => { setWatermark(v); setWatermarkEnabled(v); }}
+          />
+
           {/* Create PDF Button */}
           <Button 
             onClick={createPDF}
