@@ -278,13 +278,19 @@ const CompressPDF = () => {
                 </div>
               </div>
             ) : (
-              <Button
+              <>
+                <WatermarkToggle
+                  enabled={watermark}
+                  onChange={(v) => { setWatermark(v); setWatermarkEnabled(v); }}
+                />
+                <Button
                 onClick={compressPDF}
-                className="w-full h-14 rounded-xl bg-gradient-to-r from-primary to-accent text-white font-semibold"
+                className="w-full h-14 mt-3 rounded-xl bg-gradient-to-r from-primary to-accent text-white font-semibold"
               >
                 <FileDown className="w-5 h-5 mr-2" />
                 Compress PDF
-              </Button>
+                </Button>
+              </>
             )}
           </div>
         )}
