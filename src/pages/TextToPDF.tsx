@@ -11,6 +11,9 @@ import { useAuth } from '@/contexts/AuthContext';
 
 import { useToast } from '@/hooks/use-toast';
 import { PDFTag } from '@/types/pdf';
+import WatermarkToggle from '@/components/WatermarkToggle';
+import { applyWatermarkToPdf } from '@/lib/watermark';
+import { getWatermarkEnabled, setWatermarkEnabled } from '@/lib/preferences';
 
 const TextToPDF = () => {
   const navigate = useNavigate();
@@ -24,6 +27,7 @@ const TextToPDF = () => {
   const [tags, setTags] = useState<PDFTag[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [watermark, setWatermark] = useState<boolean>(getWatermarkEnabled());
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleOk = () => {
@@ -68,6 +72,7 @@ const TextToPDF = () => {
         y += lineHeight * 0.3; // paragraph spacing
       }
 
+      await applyWatermarkToPdf(doc, watermark);
       const pdfBlob = doc.output('blob');
       const pdfDataUrl = await new Promise<string>((resolve) => {
         const reader = new FileReader();
@@ -196,6 +201,12 @@ const TextToPDF = () => {
             <div className="rounded-2xl bg-card/60 border border-border/50 backdrop-blur-sm p-4">
               <TagSelector selectedTags={tags} onChange={setTags} />
             </div>
+
+            {/* Watermark Toggle */}
+            <WatermarkToggle
+              enabled={watermark}
+              onChange={(v) => { setWatermark(v); setWatermarkEnabled(v); }}
+            />
 
             {/* Create PDF Button */}
             <Button
