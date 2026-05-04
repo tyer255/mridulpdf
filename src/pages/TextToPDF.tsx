@@ -202,6 +202,12 @@ const TextToPDF = () => {
               <TagSelector selectedTags={tags} onChange={setTags} />
             </div>
 
+            {/* Watermark Toggle */}
+            <WatermarkToggle
+              enabled={watermark}
+              onChange={(v) => { setWatermark(v); setWatermarkEnabled(v); }}
+            />
+
             {/* Create PDF Button */}
             <Button
               onClick={generatePDF}
