@@ -325,6 +325,11 @@ const CapturePDF = () => {
                 <Switch id="pageNumbers" checked={addPageNumbers} onCheckedChange={setAddPageNumbers} />
               </div>
 
+              <WatermarkToggle
+                enabled={watermark}
+                onChange={(v) => { setWatermark(v); setWatermarkEnabled(v); }}
+              />
+
               <button
                 onClick={createPDF}
                 disabled={uploading}
