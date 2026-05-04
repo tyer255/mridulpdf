@@ -9,13 +9,15 @@ import { useToast } from '@/hooks/use-toast';
 import TagSelector from '@/components/TagSelector';
 import { mockStorage } from '@/lib/mockStorage';
 import { PDFTag } from '@/types/pdf';
-import { getAppPreferences } from '@/lib/preferences';
+import { getAppPreferences, getWatermarkEnabled, setWatermarkEnabled } from '@/lib/preferences';
 import { jsPDF } from 'jspdf';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import ExitConfirmDialog from '@/components/ExitConfirmDialog';
 import CopyButton from '@/components/CopyButton';
 import LottieLoader from '@/components/LottieLoader';
+import WatermarkToggle from '@/components/WatermarkToggle';
+import { applyWatermarkToPdf } from '@/lib/watermark';
 
 type OCRStep = 'capture' | 'scanning' | 'results';
 
@@ -58,6 +60,7 @@ const HandwritingOCR = () => {
   const [showTagSelector, setShowTagSelector] = useState(false);
   const [isCreatingPDF, setIsCreatingPDF] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [watermark, setWatermark] = useState<boolean>(getWatermarkEnabled());
   const [pdfName, setPdfName] = useState('');
   const [showExitDialog, setShowExitDialog] = useState(false);
 
