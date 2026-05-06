@@ -45,6 +45,26 @@ const PDFDetailsSheet = ({
   const [pdfContext, setPdfContext] = useState<string>('');
   const [loadingContext, setLoadingContext] = useState(false);
 
+  // Swipe-down-to-close state
+  const touchStartY = useRef<number | null>(null);
+  const [dragOffset, setDragOffset] = useState(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY;
+  };
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartY.current == null) return;
+    const delta = e.touches[0].clientY - touchStartY.current;
+    if (delta > 0) setDragOffset(delta);
+  };
+  const handleTouchEnd = () => {
+    if (dragOffset > 100) {
+      onOpenChange(false);
+    }
+    setDragOffset(0);
+    touchStartY.current = null;
+  };
+
   // Prevent "stale" delayed open from firing after user taps other PDFs
   const askAiTimeoutRef = useRef<number | null>(null);
   const askAiRequestRef = useRef<{ pdfId: string; token: number } | null>(null);
@@ -178,9 +198,15 @@ const PDFDetailsSheet = ({
           <SheetContent 
             side="bottom" 
             className="h-auto max-h-[85vh] rounded-t-3xl bg-card border-t border-border p-0 overflow-hidden"
+            style={{ transform: dragOffset ? `translateY(${dragOffset}px)` : undefined, transition: dragOffset ? 'none' : 'transform 200ms ease-out' }}
           >
             {/* Handle bar */}
-            <div className="flex justify-center pt-3 pb-2">
+            <div
+              className="flex justify-center pt-3 pb-2 touch-none cursor-grab active:cursor-grabbing"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
               <div className="w-12 h-1.5 bg-muted rounded-full" />
             </div>
 
@@ -249,14 +275,28 @@ const PDFDetailsSheet = ({
                     className="rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white px-4 h-9"
                     onClick={async () => {
                       if (!pdf) return;
+                      // Open a tab synchronously to avoid popup blockers on mobile
+                      const newTab = window.open('about:blank', '_blank');
                       try {
-                        let downloadUrl = pdf.downloadUrl || await mockStorage.getPDFDownloadUrl(pdf.id);
-                        const response = await fetch(downloadUrl);
-                        const blob = await response.blob();
-                        const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
-                        window.open(url, '_blank');
+                        const downloadUrl = pdf.downloadUrl || await mockStorage.getPDFDownloadUrl(pdf.id);
+                        // Use Google's PDF viewer fallback to force inline render in browsers that download by default
+                        const viewerUrl = `https://docs.google.com/viewer?embedded=true&url=${encodeURIComponent(downloadUrl)}`;
+                        if (newTab) {
+                          newTab.location.href = downloadUrl;
+                          // If browser forces download, user can fall back to viewer
+                          setTimeout(() => {
+                            try {
+                              if (newTab && !newTab.closed && newTab.location.href === 'about:blank') {
+                                newTab.location.href = viewerUrl;
+                              }
+                            } catch {}
+                          }, 1500);
+                        } else {
+                          window.location.href = downloadUrl;
+                        }
                       } catch (err) {
                         console.error('Quick view error:', err);
+                        if (newTab) newTab.close();
                       }
                     }}
                   >
