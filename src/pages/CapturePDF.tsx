@@ -330,17 +330,17 @@ const CapturePDF = () => {
                 onChange={(v) => { setWatermark(v); setWatermarkEnabled(v); }}
               />
 
-              <button
+              <Button
                 onClick={createPDF}
                 disabled={uploading}
-                className="w-full py-3.5 rounded-xl shimmer-btn text-white text-sm font-semibold shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-shadow disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-primary to-blue-400 gap-2"
               >
                 {uploading ? (
                   <><Loader2 className="h-5 w-5 animate-spin" /> Creating PDF...</>
                 ) : (
-                  <><Save className="h-5 w-5" /> Create PDF</>
+                  <><FileText className="h-5 w-5" /> Create PDF</>
                 )}
-              </button>
+              </Button>
             </div>
           )}
         </div>
