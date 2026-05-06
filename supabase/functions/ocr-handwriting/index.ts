@@ -122,8 +122,15 @@ OUTPUT TAGS:
 - Blank line: [SPACE]
 - Display formula: [MATH] formula on its own line
 - Same-line right text: left text[RIGHT]right text[/RIGHT]
-- Tables: default to image region using [TABLE_IMAGE x=0.000 y=0.000 w=0.000 h=0.000] description [/TABLE_IMAGE]
-- Diagrams/figures: [DIAGRAM x=0.000 y=0.000 w=0.000 h=0.000] description [/DIAGRAM]
+- Tables: ALWAYS use image region. Output EXACTLY three separate lines:
+    [TABLE_IMAGE x=0.000 y=0.000 w=0.000 h=0.000]
+    short description (one line, optional)
+    [/TABLE_IMAGE]
+- Diagrams/figures: same three-line format:
+    [DIAGRAM x=0.000 y=0.000 w=0.000 h=0.000]
+    short description (one line, optional)
+    [/DIAGRAM]
+- The opening tag MUST be alone on its line. The closing tag MUST be alone on its line. Never put caption text on the same line as the tag.
 
 STRICT LIST RULES:
 - Every numbered/bulleted item MUST be on its own line.
@@ -131,11 +138,13 @@ STRICT LIST RULES:
 - Never merge two points into one sentence. Keep notebook-like line breaks for lists and steps.
 
 HYBRID TABLE/DIAGRAM RULES:
-- Use [TABLE_IMAGE] for every complex table, Hindi table, handwritten table, merged-cell table, or multi-line-cell table.
-- Bbox coordinates are normalized 0-1 with 3 decimals.
-- Bbox must include full table/diagram border, first/last columns, full header row, and no clipped content.
-- Keep visual tags in the exact top-to-bottom location where the table/diagram appears relative to nearby text.
-- Do not OCR inside [TABLE_IMAGE] or [DIAGRAM] regions.
+- ALWAYS emit [TABLE_IMAGE] for ANY visible table, grid, or boxed structure (Hindi, English, handwritten, printed, merged cells — all of them). Never try to OCR table contents as text.
+- ALWAYS emit [DIAGRAM] for ANY figure, illustration, chart, drawing, arrow diagram, flowchart, or sketch. Never skip diagrams — they MUST appear as a [DIAGRAM] block.
+- Bbox coordinates are normalized 0-1 with 3 decimals. x,y = top-left corner; w,h = width/height.
+- Bbox MUST tightly include the full table/diagram with its border, header row, first/last columns, and no clipped content. Pad ~0.01 on each side if unsure.
+- Bbox values MUST be > 0 for w and h. Never emit a tag without coordinates.
+- Keep visual tags in the exact top-to-bottom location where they appear relative to nearby text.
+- Do not OCR text inside [TABLE_IMAGE] or [DIAGRAM] regions.
 
 PARAGRAPH RULES:
 - Running paragraph text can be one full-width line.
