@@ -198,9 +198,15 @@ const PDFDetailsSheet = ({
           <SheetContent 
             side="bottom" 
             className="h-auto max-h-[85vh] rounded-t-3xl bg-card border-t border-border p-0 overflow-hidden"
+            style={{ transform: dragOffset ? `translateY(${dragOffset}px)` : undefined, transition: dragOffset ? 'none' : 'transform 200ms ease-out' }}
           >
             {/* Handle bar */}
-            <div className="flex justify-center pt-3 pb-2">
+            <div
+              className="flex justify-center pt-3 pb-2 touch-none cursor-grab active:cursor-grabbing"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
               <div className="w-12 h-1.5 bg-muted rounded-full" />
             </div>
 
