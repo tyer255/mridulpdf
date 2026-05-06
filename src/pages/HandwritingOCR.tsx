@@ -233,6 +233,14 @@ const HandwritingOCR = () => {
   };
 
   const postProcessOCRText = (text: string): string => {
+    // Ensure visual tags ([TABLE_IMAGE ...], [DIAGRAM ...], [/TABLE_IMAGE], [/DIAGRAM])
+    // are ALWAYS on their own lines, even if model concatenated caption inline.
+    let normalized = text
+      // Open tag with optional bbox: split before and after the closing ']'
+      .replace(/(\[(?:TABLE_IMAGE|DIAGRAM)(?:\s+x=[\d.]+\s+y=[\d.]+\s+w=[\d.]+\s+h=[\d.]+)?\s*\])/g, '\n$1\n')
+      // Close tag on its own line
+      .replace(/(\[\/(?:TABLE_IMAGE|DIAGRAM)\])/g, '\n$1\n');
+
     const listBreakers = [
       /\s+(?=(?:\d{1,3}|[०-९]{1,3})[.)]\s*(?!\d)\S)/g,
       /\s+(?=\(?[ivxIVX]{1,4}\)\s+\S)/g,
@@ -240,7 +248,7 @@ const HandwritingOCR = () => {
       /\s+(?=[•●○◦▪■◆\-–—*]\s+\S)/g,
     ];
 
-    return text
+    return normalized
       .split('\n')
       .flatMap((line) => {
         const trimmed = line.trim();
@@ -257,6 +265,7 @@ const HandwritingOCR = () => {
         for (const breaker of listBreakers) fixed = fixed.replace(breaker, '\n');
         return fixed.split('\n').map((part) => part.trim()).filter(Boolean);
       })
+      .filter((l) => l.length > 0)
       .join('\n');
   };
 
