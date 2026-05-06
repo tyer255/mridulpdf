@@ -275,14 +275,28 @@ const PDFDetailsSheet = ({
                     className="rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white px-4 h-9"
                     onClick={async () => {
                       if (!pdf) return;
+                      // Open a tab synchronously to avoid popup blockers on mobile
+                      const newTab = window.open('about:blank', '_blank');
                       try {
-                        let downloadUrl = pdf.downloadUrl || await mockStorage.getPDFDownloadUrl(pdf.id);
-                        const response = await fetch(downloadUrl);
-                        const blob = await response.blob();
-                        const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
-                        window.open(url, '_blank');
+                        const downloadUrl = pdf.downloadUrl || await mockStorage.getPDFDownloadUrl(pdf.id);
+                        // Use Google's PDF viewer fallback to force inline render in browsers that download by default
+                        const viewerUrl = `https://docs.google.com/viewer?embedded=true&url=${encodeURIComponent(downloadUrl)}`;
+                        if (newTab) {
+                          newTab.location.href = downloadUrl;
+                          // If browser forces download, user can fall back to viewer
+                          setTimeout(() => {
+                            try {
+                              if (newTab && !newTab.closed && newTab.location.href === 'about:blank') {
+                                newTab.location.href = viewerUrl;
+                              }
+                            } catch {}
+                          }, 1500);
+                        } else {
+                          window.location.href = downloadUrl;
+                        }
                       } catch (err) {
                         console.error('Quick view error:', err);
+                        if (newTab) newTab.close();
                       }
                     }}
                   >
