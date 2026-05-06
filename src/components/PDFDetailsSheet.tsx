@@ -45,6 +45,26 @@ const PDFDetailsSheet = ({
   const [pdfContext, setPdfContext] = useState<string>('');
   const [loadingContext, setLoadingContext] = useState(false);
 
+  // Swipe-down-to-close state
+  const touchStartY = useRef<number | null>(null);
+  const [dragOffset, setDragOffset] = useState(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY;
+  };
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartY.current == null) return;
+    const delta = e.touches[0].clientY - touchStartY.current;
+    if (delta > 0) setDragOffset(delta);
+  };
+  const handleTouchEnd = () => {
+    if (dragOffset > 100) {
+      onOpenChange(false);
+    }
+    setDragOffset(0);
+    touchStartY.current = null;
+  };
+
   // Prevent "stale" delayed open from firing after user taps other PDFs
   const askAiTimeoutRef = useRef<number | null>(null);
   const askAiRequestRef = useRef<{ pdfId: string; token: number } | null>(null);
