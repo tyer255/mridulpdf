@@ -46,15 +46,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.removeItem('user_display_name');
     };
 
-    // 1) Subscribe first so we don't miss SIGNED_IN after redirect.
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('Auth state changed:', event, session?.user?.email);
-
-      // INITIAL_SESSION can be null/undefined while the URL/code exchange is still being processed.
-      // We rely on the explicit getSession() call below to determine the initial auth state.
-      if (event === 'INITIAL_SESSION') return;
 
       if (!isMounted) return;
 
@@ -62,7 +57,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(session?.user ?? null);
       setLoading(false);
 
-      if (event === 'SIGNED_IN') {
+      if (event === 'SIGNED_IN' || (event === 'INITIAL_SESSION' && session)) {
         syncLegacyStorage(session);
       }
 
