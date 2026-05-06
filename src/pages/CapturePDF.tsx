@@ -1,8 +1,9 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Label } from '@/components/ui/label';
-import { Camera, X, Save, Loader2, ArrowLeft, Image as ImageIcon } from 'lucide-react';
+import { Camera, X, Save, Loader2, ArrowLeft, Image as ImageIcon, FileText } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { jsPDF } from 'jspdf';
 import { mockStorage } from '@/lib/mockStorage';
