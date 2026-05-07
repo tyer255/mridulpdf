@@ -279,20 +279,13 @@ const PDFDetailsSheet = ({
                       const newTab = window.open('about:blank', '_blank');
                       try {
                         const downloadUrl = pdf.downloadUrl || await mockStorage.getPDFDownloadUrl(pdf.id);
-                        // Use Google's PDF viewer fallback to force inline render in browsers that download by default
+                        // Always use Google Docs viewer to force inline render
+                        // (Supabase storage URLs trigger download on most mobile browsers)
                         const viewerUrl = `https://docs.google.com/viewer?embedded=true&url=${encodeURIComponent(downloadUrl)}`;
                         if (newTab) {
-                          newTab.location.href = downloadUrl;
-                          // If browser forces download, user can fall back to viewer
-                          setTimeout(() => {
-                            try {
-                              if (newTab && !newTab.closed && newTab.location.href === 'about:blank') {
-                                newTab.location.href = viewerUrl;
-                              }
-                            } catch {}
-                          }, 1500);
+                          newTab.location.href = viewerUrl;
                         } else {
-                          window.location.href = downloadUrl;
+                          window.location.href = viewerUrl;
                         }
                       } catch (err) {
                         console.error('Quick view error:', err);
