@@ -93,6 +93,7 @@ const TextToPDF = () => {
           size: pdfBlob.size,
           tags,
           pageCount: totalPages,
+          isOCR: true,
         },
         getUserDisplayName()
       );
