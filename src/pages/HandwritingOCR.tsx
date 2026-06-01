@@ -1778,6 +1778,32 @@ const HandwritingOCR = () => {
                     ))}
                   </ul>
                 )}
+                {unfixablePages.length > 0 ? (
+                  <div className="mt-2 rounded-md bg-destructive/20 border border-destructive/40 p-2 text-xs text-foreground">
+                    <p className="font-semibold text-destructive">Rescan required</p>
+                    <p className="text-muted-foreground mt-0.5">
+                      Page{unfixablePages.length > 1 ? 's' : ''} {unfixablePages.join(', ')} {unfixablePages.length > 1 ? 'are' : 'is'} too blurry or cut-off to repair. Please rescan {unfixablePages.length > 1 ? 'them' : 'it'} and try again.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-2 pt-2 border-t border-destructive/20">
+                    <p className="text-sm font-medium text-foreground mb-2">Can I create a clean PDF?</p>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={runAIFix}
+                        disabled={isFixing}
+                        size="sm"
+                        className="flex-1 gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white"
+                      >
+                        {isFixing ? (
+                          <><Loader2 className="w-4 h-4 animate-spin" /> Cleaning...</>
+                        ) : (
+                          <><Sparkles className="w-4 h-4" /> Yes, clean it</>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
