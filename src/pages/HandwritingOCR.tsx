@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Image, ArrowLeft, Lock, Globe, Tag, FileText, Edit } from 'lucide-react';
+import { Camera, Image, ArrowLeft, Lock, Globe, Tag, FileText, Edit, Sparkles, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -63,6 +63,54 @@ const HandwritingOCR = () => {
   const [watermark, setWatermark] = useState<boolean>(getWatermarkEnabled());
   const [pdfName, setPdfName] = useState('');
   const [showExitDialog, setShowExitDialog] = useState(false);
+
+  // AI quality verification before allowing PDF creation
+  type VerifyIssue = { page: number; type: string; detail: string };
+  type VerifyResult = {
+    status: 'idle' | 'checking' | 'passed' | 'failed';
+    score: number;
+    message: string;
+    issues: VerifyIssue[];
+  };
+  const [verify, setVerify] = useState<VerifyResult>({ status: 'idle', score: 0, message: '', issues: [] });
+
+  // Reset verification whenever the extracted text changes
+  useEffect(() => {
+    setVerify({ status: 'idle', score: 0, message: '', issues: [] });
+  }, [extractedPages]);
+
+  const runAIVerification = async () => {
+    if (extractedPages.length === 0) return;
+    setVerify({ status: 'checking', score: 0, message: '', issues: [] });
+    speak('Checking quality with AI');
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-ocr-pdf', {
+        body: { pages: extractedPages.map((p) => p.text) },
+      });
+      if (error) throw error;
+      const perfect = !!data?.perfect;
+      setVerify({
+        status: perfect ? 'passed' : 'failed',
+        score: data?.score ?? 0,
+        message: data?.message ?? '',
+        issues: Array.isArray(data?.issues) ? data.issues : [],
+      });
+      if (perfect) {
+        speak('PDF is perfect, you can create it now');
+        toast({ title: 'PDF is perfect ✓', description: data?.message || 'You can create the PDF now.' });
+      } else {
+        toast({
+          title: 'Issues found',
+          description: data?.message || 'Review the issues below before creating the PDF.',
+          variant: 'destructive',
+        });
+      }
+    } catch (e: any) {
+      console.error('AI verification failed:', e);
+      setVerify({ status: 'idle', score: 0, message: '', issues: [] });
+      toast({ title: 'Verification failed', description: e?.message || 'Try again', variant: 'destructive' });
+    }
+  };
 
   const hasUnsavedContent = images.length > 0 || extractedPages.length > 0;
 
