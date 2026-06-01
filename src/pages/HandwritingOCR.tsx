@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Image, ArrowLeft, Lock, Globe, Tag, FileText, Edit } from 'lucide-react';
+import { Camera, Image, ArrowLeft, Lock, Globe, Tag, FileText, Edit, Sparkles, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -63,6 +63,54 @@ const HandwritingOCR = () => {
   const [watermark, setWatermark] = useState<boolean>(getWatermarkEnabled());
   const [pdfName, setPdfName] = useState('');
   const [showExitDialog, setShowExitDialog] = useState(false);
+
+  // AI quality verification before allowing PDF creation
+  type VerifyIssue = { page: number; type: string; detail: string };
+  type VerifyResult = {
+    status: 'idle' | 'checking' | 'passed' | 'failed';
+    score: number;
+    message: string;
+    issues: VerifyIssue[];
+  };
+  const [verify, setVerify] = useState<VerifyResult>({ status: 'idle', score: 0, message: '', issues: [] });
+
+  // Reset verification whenever the extracted text changes
+  useEffect(() => {
+    setVerify({ status: 'idle', score: 0, message: '', issues: [] });
+  }, [extractedPages]);
+
+  const runAIVerification = async () => {
+    if (extractedPages.length === 0) return;
+    setVerify({ status: 'checking', score: 0, message: '', issues: [] });
+    speak('Checking quality with AI');
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-ocr-pdf', {
+        body: { pages: extractedPages.map((p) => p.text) },
+      });
+      if (error) throw error;
+      const perfect = !!data?.perfect;
+      setVerify({
+        status: perfect ? 'passed' : 'failed',
+        score: data?.score ?? 0,
+        message: data?.message ?? '',
+        issues: Array.isArray(data?.issues) ? data.issues : [],
+      });
+      if (perfect) {
+        speak('PDF is perfect, you can create it now');
+        toast({ title: 'PDF is perfect ✓', description: data?.message || 'You can create the PDF now.' });
+      } else {
+        toast({
+          title: 'Issues found',
+          description: data?.message || 'Review the issues below before creating the PDF.',
+          variant: 'destructive',
+        });
+      }
+    } catch (e: any) {
+      console.error('AI verification failed:', e);
+      setVerify({ status: 'idle', score: 0, message: '', issues: [] });
+      toast({ title: 'Verification failed', description: e?.message || 'Try again', variant: 'destructive' });
+    }
+  };
 
   const hasUnsavedContent = images.length > 0 || extractedPages.length > 0;
 
@@ -1640,15 +1688,90 @@ const HandwritingOCR = () => {
             onChange={(v) => { setWatermark(v); setWatermarkEnabled(v); }}
           />
 
-          {/* Create PDF Button */}
-          <Button 
-            onClick={createPDF}
-            disabled={isCreatingPDF}
-            className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-primary to-blue-400 gap-2"
-          >
-            <FileText className="w-5 h-5" />
-            {isCreatingPDF ? 'Creating PDF...' : 'Create PDF'}
-          </Button>
+          {/* AI Quality Check */}
+          <Card className="p-4 space-y-3 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border-purple-500/30">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center shrink-0">
+                <Sparkles className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-foreground">AI Quality Check</h3>
+                <p className="text-xs text-muted-foreground">
+                  AI will analyze every page for garbled text, half-empty pages, broken flow and other issues before you create the PDF.
+                </p>
+              </div>
+            </div>
+
+            {verify.status === 'passed' && (
+              <div className="flex items-start gap-2 rounded-lg bg-green-500/10 border border-green-500/30 p-3">
+                <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-semibold text-green-500">PDF is perfect — you can create it now ✓</p>
+                  {verify.message && <p className="text-muted-foreground mt-0.5">{verify.message}</p>}
+                  {verify.score > 0 && <p className="text-xs text-muted-foreground mt-1">Quality score: {verify.score}/100</p>}
+                </div>
+              </div>
+            )}
+
+            {verify.status === 'failed' && (
+              <div className="rounded-lg bg-destructive/10 border border-destructive/30 p-3 space-y-2">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                  <div className="text-sm flex-1">
+                    <p className="font-semibold text-destructive">Issues detected</p>
+                    {verify.message && <p className="text-muted-foreground mt-0.5">{verify.message}</p>}
+                    {verify.score > 0 && <p className="text-xs text-muted-foreground mt-1">Quality score: {verify.score}/100</p>}
+                  </div>
+                </div>
+                {verify.issues.length > 0 && (
+                  <ul className="text-xs space-y-1 pl-7 text-foreground/90 list-disc">
+                    {verify.issues.slice(0, 8).map((iss, i) => (
+                      <li key={i}>
+                        <span className="font-medium">Page {iss.page}:</span> {iss.detail}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
+            {verify.status !== 'passed' && (
+              <Button
+                onClick={runAIVerification}
+                disabled={verify.status === 'checking' || extractedPages.length === 0}
+                variant="outline"
+                className="w-full h-12 gap-2 border-purple-500/40"
+              >
+                {verify.status === 'checking' ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> AI is analyzing every page...</>
+                ) : verify.status === 'failed' ? (
+                  <><Sparkles className="w-4 h-4" /> Re-check with AI</>
+                ) : (
+                  <><Sparkles className="w-4 h-4" /> Verify with AI</>
+                )}
+              </Button>
+            )}
+          </Card>
+
+          {/* Create PDF Button — only enabled after AI says PDF is perfect */}
+          {verify.status === 'passed' ? (
+            <Button
+              onClick={createPDF}
+              disabled={isCreatingPDF}
+              className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-primary to-blue-400 gap-2 animate-in fade-in slide-in-from-bottom-2"
+            >
+              <FileText className="w-5 h-5" />
+              {isCreatingPDF ? 'Creating PDF...' : 'Create PDF'}
+            </Button>
+          ) : (
+            <div className="w-full rounded-lg border border-dashed border-border bg-muted/30 p-4 text-center">
+              <p className="text-sm text-muted-foreground">
+                {verify.status === 'failed'
+                  ? 'Fix the issues or re-check with AI to unlock Create PDF.'
+                  : 'Run AI quality check to unlock the Create PDF button.'}
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>
