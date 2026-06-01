@@ -73,10 +73,13 @@ const HandwritingOCR = () => {
     issues: VerifyIssue[];
   };
   const [verify, setVerify] = useState<VerifyResult>({ status: 'idle', score: 0, message: '', issues: [] });
+  const [isFixing, setIsFixing] = useState(false);
+  const [unfixablePages, setUnfixablePages] = useState<number[]>([]);
 
   // Reset verification whenever the extracted text changes
   useEffect(() => {
     setVerify({ status: 'idle', score: 0, message: '', issues: [] });
+    setUnfixablePages([]);
   }, [extractedPages]);
 
   const runAIVerification = async () => {
@@ -109,6 +112,49 @@ const HandwritingOCR = () => {
       console.error('AI verification failed:', e);
       setVerify({ status: 'idle', score: 0, message: '', issues: [] });
       toast({ title: 'Verification failed', description: e?.message || 'Try again', variant: 'destructive' });
+    }
+  };
+
+  // Auto-fix detected issues using AI and replace extractedPages text
+  const runAIFix = async () => {
+    if (extractedPages.length === 0) return;
+    setIsFixing(true);
+    speak('Cleaning the PDF with AI');
+    try {
+      const { data, error } = await supabase.functions.invoke('fix-ocr-pdf', {
+        body: {
+          pages: extractedPages.map((p) => p.text),
+          issues: verify.issues,
+        },
+      });
+      if (error) throw error;
+      if (!data?.pages || !Array.isArray(data.pages)) throw new Error('No fixed pages returned');
+
+      const fixedPages = extractedPages.map((p, idx) => ({
+        ...p,
+        text: data.pages[idx]?.text ?? p.text,
+      }));
+      setExtractedPages(fixedPages);
+      const rescan: number[] = Array.isArray(data.unfixable_pages) ? data.unfixable_pages : [];
+      setUnfixablePages(rescan);
+
+      if (rescan.length > 0) {
+        toast({
+          title: 'Some pages need a rescan',
+          description: `Page${rescan.length > 1 ? 's' : ''} ${rescan.join(', ')} could not be repaired. Please rescan ${rescan.length > 1 ? 'them' : 'it'}.`,
+          variant: 'destructive',
+        });
+        setVerify({ status: 'failed', score: 0, message: 'Rescan required for unreadable pages.', issues: [] });
+      } else {
+        toast({ title: 'PDF cleaned ✓', description: data?.summary || 'Re-checking quality...' });
+        // Re-run verification on the cleaned text
+        setTimeout(() => { runAIVerification(); }, 200);
+      }
+    } catch (e: any) {
+      console.error('AI fix failed:', e);
+      toast({ title: 'Could not clean PDF', description: e?.message || 'Try again', variant: 'destructive' });
+    } finally {
+      setIsFixing(false);
     }
   };
 
